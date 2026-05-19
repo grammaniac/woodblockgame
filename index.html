@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>우드 블록 퍼즐</title>
+<style>
+  :root{
+    --cell: 44px;
+    --traycell: 27px;
+    --wood-dark:#4a3017;
+    --wood:#6b4626;
+    --wood-light:#8a5e36;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:
+      radial-gradient(ellipse at 50% 0%, #3a2814 0%, #1c1208 70%);
+    color:#f3e3c8;
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100%;
+    padding:14px 10px 24px;
+    /* 모바일 스크롤 및 터치 제어(당겨서 새로고침 등) 완전 차단 */
+    overflow:hidden; 
+    user-select:none; -webkit-user-select:none;
+    touch-action:none; 
+  }
+
+  /* ---------- header ---------- */
+  .topbar{
+    width:100%; max-width:480px;
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .title{
+    font-size:21px; font-weight:800; letter-spacing:.5px;
+    color:#f6d486;
+    text-shadow:0 2px 0 #5c3c1f, 0 3px 6px rgba(0,0,0,.6);
+  }
+  .title small{ display:block; font-size:10px; letter-spacing:3px; color:#c79a5a; font-weight:600;}
+  .iconbtn{
+    width:38px; height:38px; border:none; border-radius:11px;
+    background:linear-gradient(160deg,#8a5e36,#5c3c1f);
+    color:#f6d486; font-size:17px; cursor:pointer;
+    box-shadow:0 3px 0 #3a2510, inset 0 1px 1px rgba(255,255,255,.25);
+    display:flex; align-items:center; justify-content:center;
+    transition:transform .08s;
+  }
+  .iconbtn:active{ transform:translateY(2px); box-shadow:0 1px 0 #3a2510; }
+  .btnrow{ display:flex; gap:8px; }
+
+  /* ---------- score panel ---------- */
+  .scorewrap{
+    width:100%; max-width:480px;
+    display:flex; gap:10px; margin-bottom:12px;
+  }
+  .scorecard{
+    flex:1; background:linear-gradient(160deg,#7a5230,#4a3017);
+    border-radius:13px; padding:8px 12px;
+    box-shadow:inset 0 1px 2px rgba(255,255,255,.18), 0 3px 6px rgba(0,0,0,.45);
+    text-align:center;
+  }
+  .scorecard .lbl{ font-size:10px; letter-spacing:2px; color:#c79a5a; font-weight:700; }
+  .scorecard .val{ font-size:24px; font-weight:800; color:#f6d486; line-height:1.15; }
+  .scorecard.combo .val{ color:#ffd24a; }
+
+  /* ---------- frame & board ---------- */
+  .frame{
+    background:
+      repeating-linear-gradient(91deg, rgba(0,0,0,.10) 0 3px, transparent 3px 9px),
+      linear-gradient(160deg,var(--wood-light),var(--wood-dark));
+    padding:14px;
+    border-radius:20px;
+    box-shadow:
+      inset 0 2px 3px rgba(255,255,255,.22),
+      inset 0 -6px 12px rgba(0,0,0,.45),
+      0 12px 28px rgba(0,0,0,.6);
+    border:3px solid #2e1d0c;
+  }
+  .frame.shake{ animation:shake .4s ease; }
+  @keyframes shake{
+    0%,100%{transform:translate(0,0);}
+    20%{transform:translate(-5px,3px) rotate(-.5deg);}
+    40%{transform:translate(5px,-3px) rotate(.5deg);}
+    60%{transform:translate(-4px,2px);}
+    80%{transform:translate(4px,-2px);}
+  }
+  .board{
+    position:relative;
+    display:grid;
+    grid-template-columns:repeat(8,var(--cell));
+    grid-template-rows:repeat(8,var(--cell));
+    background:
+      repeating-linear-gradient(0deg, rgba(0,0,0,.13) 0 2px, transparent 2px 8px),
+      linear-gradient(160deg,#5a3c22,#3d2814);
+    border-radius:10px;
+    box-shadow:inset 0 3px 10px rgba(0,0,0,.6);
+  }
+  .cell{ position:relative; width:var(--cell); height:var(--cell); }
+  /* recessed empty hole */
+  .cell::before{
+    content:""; position:absolute; inset:7%;
+    border-radius:22%;
+    background:linear-gradient(160deg,#7a5836,#5e4126);
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.5), inset 0 -2px 3px rgba(255,255,255,.07);
+  }
+  /* ghost preview */
+  .cell.ghost::after{
+    content:""; position:absolute; inset:7%;
+    border-radius:22%;
+    background:var(--c);
+    opacity:.4;
+  }
+  .cell.ghost.gline::after{
+    opacity:.7;
+    box-shadow:0 0 8px 2px rgba(255,255,255,.7);
+  }
+  /* filled block */
+  .blk{
+    position:absolute; inset:7%;
+    border-radius:22%;
+    display:none;
+    background:
+      linear-gradient(150deg,
+        color-mix(in srgb, var(--c) 60%, #ffffff) 0%,
+        var(--c) 48%,
+        color-mix(in srgb, var(--c) 72%, #000000) 100%);
+    box-shadow:
+      inset 0 0.16em 0.12em rgba(255,255,255,.6),
+      inset 0 -0.2em 0.16em rgba(0,0,0,.4),
+      inset 0.14em 0 0.1em rgba(255,255,255,.25),
+      0 0.1em 0.16em rgba(0,0,0,.4);
+  }
+  .blk::after{
+    content:""; position:absolute; left:16%; top:12%;
+    width:34%; height:26%;
+    border-radius:50%;
+    background:rgba(255,255,255,.4);
+    filter:blur(1px);
+  }
+  .cell.filled .blk{ display:block; }
+  .cell.pop .blk{ animation:pop .22s ease; }
+  @keyframes pop{
+    0%{ transform:scale(.4); }
+    65%{ transform:scale(1.12); }
+    100%{ transform:scale(1); }
+  }
+  .cell.clearing .blk{ animation:clearpop .34s ease forwards; }
+  @keyframes clearpop{
+    0%{ transform:scale(1); filter:brightness(1); }
+    35%{ transform:scale(1.22); filter:brightness(2.4); }
+    100%{ transform:scale(0); filter:brightness(3); opacity:0; }
+  }
+
+  /* ---------- tray ---------- */
+  .tray{
+    width:100%; max-width:480px;
+    margin-top:16px;
+    display:grid; grid-template-columns:repeat(3,1fr);
+    gap:8px;
+  }
+  .slot{
+    height:calc(var(--traycell) * 4.4);
+    background:linear-gradient(160deg,#6b4626,#3d2814);
+    border-radius:14px;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.5), 0 3px 5px rgba(0,0,0,.4);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .slot .piece{ position:relative; }
+  .slot.dragging .piece{ opacity:.25; }
+  .slot .piece .blk{ display:block; }
+  .slot .piece.spin{ animation:spin .26s ease; }
+  @keyframes spin{
+    0%{ transform:rotate(-90deg) scale(.65); }
+    60%{ transform:rotate(9deg) scale(1.1); }
+    100%{ transform:rotate(0deg) scale(1); }
+  }
+
+  /* ---------- floating drag piece ---------- */
+  .floating{
+    position:fixed; z-index:50; pointer-events:none;
+    left:0; top:0;
+    filter:drop-shadow(0 8px 10px rgba(0,0,0,.55));
+  }
+  .floating .blk{ display:block; }
+
+  /* ---------- particles ---------- */
+  .particle{
+    position:fixed; z-index:60; pointer-events:none;
+    width:9px; height:9px; border-radius:3px;
+    animation:fly .6s ease-out forwards;
+  }
+  @keyframes fly{
+    0%{ transform:translate(-50%,-50%) scale(1.2); opacity:1; }
+    100%{ transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.2); opacity:0; }
+  }
+
+  /* ---------- floating texts ---------- */
+  .scorepop{
+    position:fixed; z-index:60; pointer-events:none;
+    font-weight:800; font-size:20px; color:#ffe070;
+    text-shadow:0 2px 4px rgba(0,0,0,.7);
+    animation:rise .9s ease-out forwards;
+  }
+  @keyframes rise{
+    0%{ transform:translate(-50%,0) scale(.6); opacity:0; }
+    20%{ transform:translate(-50%,-10px) scale(1.1); opacity:1; }
+    100%{ transform:translate(-50%,-70px) scale(1); opacity:0; }
+  }
+  .combobanner{
+    position:fixed; z-index:61; pointer-events:none;
+    left:50%; top:38%;
+    transform:translate(-50%,-50%);
+    font-weight:900; font-size:42px;
+    color:#ffd24a;
+    text-shadow:0 0 18px rgba(255,170,40,.9), 0 4px 6px rgba(0,0,0,.7);
+    animation:combo .9s ease-out forwards;
+  }
+  .combobanner.special{
+    font-size:54px;
+    background:linear-gradient(90deg,#e8463d,#ee8f2f,#f1c12e,#54bd45,#27b8c8,#3f7ad9,#a45ad0);
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent; color:transparent;
+    text-shadow:none;
+    filter:drop-shadow(0 0 16px rgba(255,220,120,.85)) drop-shadow(0 4px 5px rgba(0,0,0,.65));
+    animation:combo 1.3s ease-out forwards;
+  }
+  @keyframes combo{
+    0%{ transform:translate(-50%,-50%) scale(.3) rotate(-12deg); opacity:0; }
+    25%{ transform:translate(-50%,-50%) scale(1.15) rotate(4deg); opacity:1; }
+    70%{ transform:translate(-50%,-50%) scale(1) rotate(0deg); opacity:1; }
+    100%{ transform:translate(-50%,-115%) scale(.9); opacity:0; }
+  }
+
+  /* ---------- game over modal ---------- */
+  .overlay{
+    position:fixed; inset:0; z-index:80;
+    background:rgba(10,6,2,.78);
+    display:none; align-items:center; justify-content:center;
+    backdrop-filter:blur(3px);
+  }
+  .overlay.show{ display:flex; animation:fade .25s ease; }
+  @keyframes fade{ from{opacity:0;} to{opacity:1;} }
+  .modal{
+    background:
+      repeating-linear-gradient(91deg, rgba(0,0,0,.08) 0 3px, transparent 3px 9px),
+      linear-gradient(160deg,var(--wood-light),var(--wood-dark));
+    border:3px solid #2e1d0c;
+    border-radius:22px;
+    padding:28px 30px;
+    text-align:center;
+    box-shadow:0 18px 40px rgba(0,0,0,.7), inset 0 2px 3px rgba(255,255,255,.2);
+    animation:popin .3s ease;
+    max-width:300px;
+  }
+  @keyframes popin{ from{transform:scale(.7);opacity:0;} to{transform:scale(1);opacity:1;} }
+  .modal h2{ font-size:26px; color:#f6d486; margin-bottom:6px; }
+  .modal .sub{ font-size:13px; color:#c79a5a; margin-bottom:16px; }
+  .modal .finalscore{ font-size:46px; font-weight:900; color:#ffd24a;
+    text-shadow:0 2px 6px rgba(0,0,0,.6); line-height:1; }
+  .modal .best{ font-size:13px; color:#e0bd84; margin:8px 0 20px; }
+  .bigbtn{
+    border:none; cursor:pointer;
+    background:linear-gradient(160deg,#ffd24a,#e09020);
+    color:#3a2510; font-weight:800; font-size:17px;
+    padding:13px 30px; border-radius:13px;
+    box-shadow:0 4px 0 #9c6010, inset 0 1px 1px rgba(255,255,255,.5);
+    transition:transform .08s;
+  }
+  .bigbtn:active{ transform:translateY(3px); box-shadow:0 1px 0 #9c6010; }
+
+  .hint{ margin-top:14px; font-size:11px; color:#9c7d52; text-align:center; }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="title">우드 블록 퍼즐<small>BLOCK PUZZLE</small></div>
+    <div class="btnrow">
+      <button class="iconbtn" id="muteBtn" aria-label="음소거 토글" title="소리">&#128266;</button>
+      <button class="iconbtn" id="newBtn" aria-label="새 게임 시작" title="새 게임">&#8635;</button>
+    </div>
+  </div>
+
+  <div class="scorewrap">
+    <div class="scorecard"><div class="lbl">SCORE</div><div class="val" id="score">0</div></div>
+    <div class="scorecard combo"><div class="lbl">COMBO</div><div class="val" id="comboval">0</div></div>
+    <div class="scorecard"><div class="lbl">BEST</div><div class="val" id="best">0</div></div>
+  </div>
+
+  <div class="frame" id="frame">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="tray" id="tray"></div>
+
+  <div class="hint">조각을 탭하면 회전 · 드래그해서 배치 · 가로/세로 줄을 채우면 사라집니다</div>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2>게임 오버</h2>
+      <div class="sub">더 놓을 곳이 없어요!</div>
+      <div class="finalscore" id="finalScore">0</div>
+      <div class="best" id="finalBest">최고 점수 0</div>
+      <button class="bigbtn" id="restartBtn">다시 하기</button>
+    </div>
+  </div>
+
+<script>
+"use strict";
+(function(){
+  const SIZE = 8;
+  const TYPE_COLORS = [
+    "#27b8c8",  // I  - cyan
+    "#f1c12e",  // O  - yellow
+    "#a45ad0",  // T  - purple
+    "#54bd45",  // S  - green
+    "#e8463d",  // Z  - red
+    "#ee8f2f",  // L  - orange
+    "#3f7ad9"   // J  - blue
+  ];
+
+  /* ---------- tetromino definitions ---------- */
+  const TETROMINOES = [
+    [[0,0],[0,1],[0,2],[0,3]],   // I
+    [[0,0],[0,1],[1,0],[1,1]],   // O
+    [[0,0],[0,1],[0,2],[1,1]],   // T
+    [[0,1],[0,2],[1,0],[1,1]],   // S
+    [[0,0],[0,1],[1,1],[1,2]],   // Z
+    [[0,0],[1,0],[2,0],[2,1]],   // L
+    [[0,1],[1,1],[2,0],[2,1]]    // J
+  ];
+
+  function normalize(cells){
+    let minR=Infinity,minC=Infinity;
+    for(const [r,c] of cells){ if(r<minR)minR=r; if(c<minC)minC=c; }
+    return cells.map(([r,c])=>[r-minR,c-minC])
+                .sort((a,b)=> a[0]-b[0] || a[1]-b[1]);
+  }
+  function rotate(cells){ return normalize(cells.map(([r,c])=>[c,-r])); }
+
+  const PIECES_DEF = TETROMINOES.map(base=>{
+    const states=[], seen=new Set();
+    let cur=normalize(base);
+    for(let i=0;i<4;i++){
+      const key=JSON.stringify(cur);
+      if(!seen.has(key)){
+        seen.add(key);
+        let maxR=0,maxC=0;
+        for(const [r,c] of cur){ if(r>maxR)maxR=r; if(c>maxC)maxC=c; }
+        states.push({ cells:cur, h:maxR+1, w:maxC+1 });
+      }
+      cur=rotate(cur);
+    }
+    return states;
+  });
+
+  /* ---------- state ---------- */
+  let board, pieces, score, combo, best, dragData=null, gameOver=false;
+  let pending=null;
+  let busy=false;
+  let muted=false;
+
+  const boardEl   = document.getElementById("board");
+  const trayEl    = document.getElementById("tray");
+  const frameEl   = document.getElementById("frame");
+  const scoreEl   = document.getElementById("score");
+  const comboEl   = document.getElementById("comboval");
+  const bestEl    = document.getElementById("best");
+  const overlayEl = document.getElementById("overlay");
+
+  const cellEls = [];
+
+  /* ---------- sound (Web Audio) ---------- */
+  let actx=null, master=null;
+  function audio(){
+    if(!actx){
+      actx = new (window.AudioContext||window.webkitAudioContext)();
+      master = actx.createGain();
+      master.gain.value = 0.5;
+      master.connect(actx.destination);
+    }
+    if(actx.state==="suspended") actx.resume();
+    return actx;
+  }
+  function tone(freq,dur,type,vol,delay,glideTo){
+    if(muted) return;
+    const a=audio(), t=a.currentTime+(delay||0);
+    const o=a.createOscillator(), g=a.createGain();
+    o.type=type||"sine";
+    o.frequency.setValueAtTime(freq,t);
+    if(glideTo) o.frequency.exponentialRampToValueAtTime(glideTo,t+dur);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(vol||0.2,t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g).connect(master);
+    o.start(t); o.stop(t+dur+0.03);
+  }
+  function noise(dur,vol,delay){
+    if(muted) return;
+    const a=audio(), t=a.currentTime+(delay||0);
+    const len=Math.floor(a.sampleRate*dur);
+    const buf=a.createBuffer(1,len,a.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len);
+    const src=a.createBufferSource(); src.buffer=buf;
+    const f=a.createBiquadFilter(); f.type="lowpass"; f.frequency.value=900;
+    const g=a.createGain(); g.gain.value=vol||0.18;
+    src.connect(f).connect(g).connect(master);
+    src.start(t);
+  }
+  const S = {
+    pickup(){ tone(520,0.09,"triangle",0.16); tone(820,0.07,"triangle",0.1,0.05); },
+    place(){ tone(220,0.13,"sine",0.26,0,130); noise(0.07,0.14); },
+    invalid(){ tone(150,0.16,"sawtooth",0.16,0,95); tone(120,0.16,"sawtooth",0.12,0.08,80); },
+    clear(lines,cmb){
+      const penta=[523.25,587.33,659.25,783.99,880,1046.5,1174.66,1318.5];
+      const start=Math.min(cmb-1,4);
+      const count=Math.min(3+lines,7);
+      for(let i=0;i<count;i++)
+        tone(penta[Math.min(start+i,penta.length-1)],0.16,"triangle",0.2,i*0.06);
+      tone(penta[Math.min(start+count,penta.length-1)],0.34,"sine",0.16,count*0.06);
+    },
+    newpieces(){ tone(440,0.1,"sine",0.12); tone(660,0.1,"sine",0.1,0.08); },
+    rotate(){ tone(430,0.07,"square",0.13,0,560); tone(680,0.06,"triangle",0.1,0.05); },
+    gameover(){
+      const n=[440,349.23,293.66,220];
+      n.forEach((f,i)=> tone(f,0.4,"sine",0.22,i*0.18));
+    },
+    fanfare(){
+      const tri=[523.25,659.25,783.99,1046.5];
+      tri.forEach((f,i)=>{
+        tone(f,0.2,"square",0.14,i*0.09);
+        tone(f*2,0.2,"triangle",0.05,i*0.09);
+      });
+      [1046.5,1318.5,1567.98].forEach((f,i)=> tone(f,0.34,"triangle",0.12,0.42+i*0.09));
+      tone(2093,0.5,"sine",0.12,0.66);
+      noise(0.12,0.1,0.4);
+    },
+    click(){ tone(600,0.06,"square",0.1); }
+  };
+
+  /* ---------- save state ---------- */
+  function saveState() {
+    if(gameOver) {
+      localStorage.removeItem("woodblock_state");
+    } else {
+      const state = { board, pieces, score, combo };
+      localStorage.setItem("woodblock_state", JSON.stringify(state));
+    }
+  }
+
+  /* ---------- build board ---------- */
+  function buildBoard(){
+    boardEl.innerHTML="";
+    cellEls.length=0;
+    for(let r=0;r<SIZE;r++){
+      const row=[];
+      for(let c=0;c<SIZE;c++){
+        const cell=document.createElement("div");
+        cell.className="cell";
+        const blk=document.createElement("div");
+        blk.className="blk";
+        cell.appendChild(blk);
+        boardEl.appendChild(cell);
+        row.push(cell);
+      }
+      cellEls.push(row);
+    }
+  }
+
+  /* ---------- sizing ---------- */
+  function resize(){
+    if(dragData || pending) endGesture();
+    const maxW = Math.min(window.innerWidth-26, 460);
+    const maxH = window.innerHeight*0.56;
+    let cell = Math.floor(Math.min(maxW, maxH)/SIZE);
+    cell = Math.max(30, Math.min(cell, 56));
+    document.documentElement.style.setProperty("--cell", cell+"px");
+    document.documentElement.style.setProperty("--traycell", Math.round(cell*0.62)+"px");
+    renderTray();
+  }
+
+  /* ---------- rendering ---------- */
+  function renderBoard(){
+    for(let r=0;r<SIZE;r++){
+      for(let c=0;c<SIZE;c++){
+        const cell=cellEls[r][c];
+        cell.classList.remove("ghost","gline");
+        if(board[r][c]){
+          cell.classList.add("filled");
+          cell.style.setProperty("--c", board[r][c]);
+        }else{
+          cell.classList.remove("filled");
+        }
+      }
+    }
+  }
+
+  function pieceEl(shape,color,cellPx){
+    const wrap=document.createElement("div");
+    wrap.className="piece";
+    wrap.style.width  = shape.w*cellPx+"px";
+    wrap.style.height = shape.h*cellPx+"px";
+    wrap.style.position="relative";
+    for(const [r,c] of shape.cells){
+      const b=document.createElement("div");
+      b.className="blk";
+      b.style.position="absolute";
+      b.style.width=cellPx+"px";
+      b.style.height=cellPx+"px";
+      b.style.left=c*cellPx+"px";
+      b.style.top=r*cellPx+"px";
+      b.style.setProperty("--c",color);
+      wrap.appendChild(b);
+    }
+    return wrap;
+  }
+
+  function renderTray(){
+    if(!pieces) return;
+    const cs = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--traycell"));
+    trayEl.innerHTML="";
+    pieces.forEach((p,idx)=>{
+      const slot=document.createElement("div");
+      slot.className="slot";
+      slot.dataset.idx=idx;
+      if(p){
+        slot.appendChild(pieceEl(p.shape,p.color,cs));
+        slot.addEventListener("pointerdown",e=>onSlotDown(e,idx));
+      }
+      trayEl.appendChild(slot);
+    });
+  }
+
+  /* ---------- placement logic ---------- */
+  function canPlace(shape,row,col){
+    for(const [r,c] of shape.cells){
+      const rr=row+r, cc=col+c;
+      if(rr<0||cc<0||rr>=SIZE||cc>=SIZE) return false;
+      if(board[rr][cc]) return false;
+    }
+    return true;
+  }
+  function canPlaceAnywhere(shape){
+    for(let r=0;r<=SIZE-shape.h;r++)
+      for(let c=0;c<=SIZE-shape.w;c++)
+        if(canPlace(shape,r,c)) return true;
+    return false;
+  }
+  function findClears(){
+    const rows=[], cols=[];
+    for(let r=0;r<SIZE;r++){
+      let full=true;
+      for(let c=0;c<SIZE;c++) if(!board[r][c]){ full=false; break; }
+      if(full) rows.push(r);
+    }
+    for(let c=0;c<SIZE;c++){
+      let full=true;
+      for(let r=0;r<SIZE;r++) if(!board[r][c]){ full=false; break; }
+      if(full) cols.push(c);
+    }
+    return {rows,cols};
+  }
+
+  /* ---------- drag & tap ---------- */
+  function onSlotDown(e,idx){
+    if(gameOver || busy) return;
+    if(e.button && e.button!==0) return;
+    if((dragData||pending) && e.pointerType==="mouse") endGesture();
+    if(dragData || pending || !pieces[idx]) return;
+    e.preventDefault();
+    audio();
+    pending={ idx, x:e.clientX, y:e.clientY, pointerId:e.pointerId };
+    try{ document.body.setPointerCapture(e.pointerId); }catch(_){}
+    window.addEventListener("pointermove",onMove);
+    window.addEventListener("pointerup",onUp);
+    window.addEventListener("pointercancel",onCancel);
+    window.addEventListener("lostpointercapture",onCancel);
+  }
+
+  function beginDrag(e){
+    const idx=pending.idx;
+    const piece=pieces[idx];
+    const cell=parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cell"));
+    const float=pieceEl(piece.shape,piece.color,cell);
+    float.classList.add("floating");
+    document.body.appendChild(float);
+    const touch = e.pointerType==="touch";
+    const lift = touch ? cell*0.85 : 0;
+    dragData={
+      idx, piece, float, cell, lift, touch,
+      pointerId:pending.pointerId,
+      w:piece.shape.w*cell, h:piece.shape.h*cell,
+      target:null,
+      brect: boardEl.getBoundingClientRect() // 최적화: 최초 한 번만 위치 계산
+    };
+    trayEl.children[idx].classList.add("dragging");
+    S.pickup();
+    moveDrag(e);
+  }
+
+  function onMove(e){
+    if(e.pointerType==="mouse" && e.buttons===0){
+      endGesture();
+      return;
+    }
+    if(dragData){
+      if(e.pointerId===dragData.pointerId) moveDrag(e);
+      return;
+    }
+    if(pending && e.pointerId===pending.pointerId){
+      const dx=e.clientX-pending.x, dy=e.clientY-pending.y;
+      if(dx*dx+dy*dy > 64) beginDrag(e);
+    }
+  }
+
+  function onUp(e){
+    if(dragData && e.pointerId===dragData.pointerId){
+      endDrag();
+    }else if(pending && !dragData && e.pointerId===pending.pointerId){
+      const idx=pending.idx;
+      endGesture();
+      rotatePiece(idx);
+    }
+  }
+
+  function onCancel(e){
+    if(dragData){ if(e.pointerId===dragData.pointerId) endGesture(); return; }
+    if(pending && e.pointerId===pending.pointerId) endGesture();
+  }
+
+  function moveDrag(e){
+    e.preventDefault();
+    const d=dragData;
+    const left = e.clientX - d.w/2;
+    const top  = d.touch ? (e.clientY - d.h - d.lift)
+                         : (e.clientY - d.h/2);
+    d.float.style.left=left+"px";
+    d.float.style.top =top+"px";
+
+    // 최적화: 캐싱된 d.brect 재사용으로 리페인트 성능 향상
+    const col=Math.round((left-d.brect.left)/d.cell);
+    const row=Math.round((top -d.brect.top )/d.cell);
+    updateGhost(row,col);
+  }
+
+  let ghostCells=[];
+  function clearGhost(){
+    for(const [r,c] of ghostCells){
+      const cell=cellEls[r][c];
+      cell.classList.remove("ghost","gline");
+    }
+    ghostCells=[];
+  }
+  function updateGhost(row,col){
+    clearGhost();
+    if(!dragData) return;
+    const shape=dragData.piece.shape;
+    if(!canPlace(shape,row,col)){ dragData.target=null; return; }
+    dragData.target={row,col};
+
+    const occ=new Set();
+    for(const [r,c] of shape.cells) occ.add((row+r)+","+(col+c));
+    const filledRows=[], filledCols=[];
+    for(let r=0;r<SIZE;r++){
+      let full=true;
+      for(let c=0;c<SIZE;c++) if(!board[r][c] && !occ.has(r+","+c)){ full=false; break; }
+      if(full) filledRows.push(r);
+    }
+    for(let c=0;c<SIZE;c++){
+      let full=true;
+      for(let r=0;r<SIZE;r++) if(!board[r][c] && !occ.has(r+","+c)){ full=false; break; }
+      if(full) filledCols.push(c);
+    }
+    const lineSet=new Set();
+    filledRows.forEach(r=>{ for(let c=0;c<SIZE;c++) lineSet.add(r+","+c); });
+    filledCols.forEach(c=>{ for(let r=0;r<SIZE;r++) lineSet.add(r+","+c); });
+
+    for(const [r,c] of shape.cells){
+      const rr=row+r, cc=col+c;
+      const cell=cellEls[rr][cc];
+      cell.classList.add("ghost");
+      cell.style.setProperty("--c",dragData.piece.color);
+      ghostCells.push([rr,cc]);
+    }
+    lineSet.forEach(k=>{
+      const [r,c]=k.split(",").map(Number);
+      const cell=cellEls[r][c];
+      cell.classList.add("ghost","gline");
+      if(!board[r][c] && !occ.has(k)) cell.style.setProperty("--c",dragData.piece.color);
+      ghostCells.push([r,c]);
+    });
+  }
+
+  function endGesture(){
+    window.removeEventListener("pointermove",onMove);
+    window.removeEventListener("pointerup",onUp);
+    window.removeEventListener("pointercancel",onCancel);
+    window.removeEventListener("lostpointercapture",onCancel);
+    const pid = dragData ? dragData.pointerId : (pending ? pending.pointerId : null);
+    if(pid!=null){ try{ document.body.releasePointerCapture(pid); }catch(_){} }
+    if(dragData){
+      dragData.float.remove();
+      const slot=trayEl.children[dragData.idx];
+      if(slot) slot.classList.remove("dragging");
+    }
+    clearGhost();
+    dragData=null;
+    pending=null;
+  }
+
+  function endDrag(){
+    const d=dragData;
+    if(d.target && canPlace(d.piece.shape,d.target.row,d.target.col)){
+      const {row,col}=d.target;
+      const idx=d.idx, piece=d.piece;
+      endGesture();
+      commitPlace(idx,piece,row,col);
+    }else{
+      S.invalid();
+      endGesture();
+    }
+  }
+
+  function rotatePiece(idx){
+    const p=pieces[idx];
+    if(!p) return;
+    const states=PIECES_DEF[p.type];
+    if(states.length<=1){ S.click(); return; }
+    p.rot=(p.rot+1)%states.length;
+    p.shape=states[p.rot];
+    S.rotate();
+    renderTray();
+    const slot=trayEl.children[idx];
+    const pe=slot && slot.querySelector(".piece");
+    if(pe) pe.classList.add("spin");
+    saveState(); // 회전 상태도 저장
+  }
+
+  /* ---------- commit a placement ---------- */
+  function commitPlace(idx,piece,row,col){
+    const placed=[];
+    for(const [r,c] of piece.shape.cells){
+      const rr=row+r, cc=col+c;
+      board[rr][cc]=piece.color;
+      placed.push([rr,cc]);
+    }
+    pieces[idx]=null;
+    score += piece.shape.cells.length;
+    S.place();
+    renderBoard();
+    placed.forEach(([r,c])=>{
+      const cell=cellEls[r][c];
+      cell.classList.remove("pop");
+      void cell.offsetWidth;
+      cell.classList.add("pop");
+    });
+
+    const clears=findClears();
+    const lines=clears.rows.length+clears.cols.length;
+
+    if(lines>0){
+      combo++;
+      const cells=[];
+      let sameColorLines=0;
+      clears.rows.forEach(r=>{
+        const c0=board[r][0]; let same=true;
+        for(let c=0;c<SIZE;c++){ cells.push([r,c]); if(board[r][c]!==c0) same=false; }
+        if(same) sameColorLines++;
+      });
+      clears.cols.forEach(c=>{
+        const r0=board[0][c]; let same=true;
+        for(let r=0;r<SIZE;r++){ cells.push([r,c]); if(board[r][c]!==r0) same=false; }
+        if(same) sameColorLines++;
+      });
+      const uniq=[...new Set(cells.map(x=>x.join(",")))].map(s=>s.split(",").map(Number));
+
+      let gain = (lines-sameColorLines)*10 + sameColorLines*30;
+      if(lines>1) gain += (lines-1)*10;
+      if(combo>1) gain += combo*5;
+      score += gain;
+
+      spawnParticles(uniq);
+      uniq.forEach(([r,c])=> cellEls[r][c].classList.add("clearing"));
+
+      const brect=boardEl.getBoundingClientRect();
+      scorePop("+"+gain, brect.left+brect.width/2, brect.top+brect.height/2);
+      if(sameColorLines>0){
+        S.fanfare();
+        comboBanner("SAME COLOR x3", true);
+        shake();
+      }else{
+        S.clear(lines,combo);
+        if(lines>=2){
+          comboBanner(lines>=3 ? "TRIPLE!" : "DOUBLE!");
+          shake();
+        }else if(combo>1){
+          comboBanner("COMBO x"+combo);
+        }
+      }
+
+      updateHud();
+      busy=true;
+      setTimeout(()=>{
+        uniq.forEach(([r,c])=>{
+          board[r][c]=null;
+          cellEls[r][c].classList.remove("clearing");
+        });
+        renderBoard();
+        busy=false;
+        finishTurn();
+      },340);
+    }else{
+      combo=0;
+      updateHud();
+      finishTurn();
+    }
+  }
+
+  function finishTurn(){
+    renderTray();
+    if(pieces.every(p=>!p)){
+      newPieces();
+      S.newpieces();
+    }
+    if(isGameOver()){
+      endGame();
+    }
+    saveState(); // 진행 상태 저장
+  }
+
+  function isGameOver(){
+    const remain=pieces.filter(p=>p);
+    if(remain.length===0) return false;
+    return remain.every(p=> PIECES_DEF[p.type].every(sh=> !canPlaceAnywhere(sh)));
+  }
+
+  /* ---------- pieces ---------- */
+  function randPiece(){
+    const type=Math.floor(Math.random()*PIECES_DEF.length);
+    const states=PIECES_DEF[type];
+    const rot=Math.floor(Math.random()*states.length);
+    const color=TYPE_COLORS[type];
+    return { type, rot, color, shape:states[rot] };
+  }
+  function newPieces(){
+    pieces=[randPiece(),randPiece(),randPiece()];
+    renderTray();
+  }
+
+  /* ---------- effects ---------- */
+  function spawnParticles(cells){
+    cells.forEach(([r,c])=>{
+      const color=board[r][c]||"#f7c63e";
+      const rect=cellEls[r][c].getBoundingClientRect();
+      const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+      for(let i=0;i<3;i++){
+        const p=document.createElement("div");
+        p.className="particle";
+        p.style.left=cx+"px"; p.style.top=cy+"px";
+        p.style.background=color;
+        p.style.setProperty("--dx",(Math.random()*2-1)*70+"px");
+        p.style.setProperty("--dy",((Math.random()*2-1)*70-30)+"px");
+        document.body.appendChild(p);
+        setTimeout(()=>p.remove(),650);
+      }
+    });
+  }
+  function scorePop(text,x,y){
+    const el=document.createElement("div");
+    el.className="scorepop";
+    el.textContent=text;
+    el.style.left=x+"px"; el.style.top=y+"px";
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),950);
+  }
+  function comboBanner(text,special){
+    const el=document.createElement("div");
+    el.className="combobanner"+(special?" special":"");
+    el.textContent=text;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),special?1300:950);
+  }
+  function shake(){
+    frameEl.classList.remove("shake");
+    void frameEl.offsetWidth;
+    frameEl.classList.add("shake");
+  }
+
+  /* ---------- hud ---------- */
+  function updateHud(){
+    scoreEl.textContent=score;
+    comboEl.textContent=combo;
+    if(score>best){
+      best=score;
+      localStorage.setItem("woodblock_best",best);
+    }
+    bestEl.textContent=best;
+  }
+
+  /* ---------- game over ---------- */
+  function endGame(){
+    gameOver=true;
+    S.gameover();
+    document.getElementById("finalScore").textContent=score;
+    document.getElementById("finalBest").textContent="최고 점수 "+best;
+    overlayEl.classList.add("show");
+    saveState(); // 게임 오버 시 저장 기록 초기화
+  }
+
+  /* ---------- init / restore state ---------- */
+  function initGame(){
+    const savedState = localStorage.getItem("woodblock_state");
+    if(savedState) {
+      try {
+        const parsed = JSON.parse(savedState);
+        board = parsed.board;
+        pieces = parsed.pieces;
+        score = parsed.score;
+        combo = parsed.combo;
+        gameOver = false;
+        overlayEl.classList.remove("show");
+        renderBoard();
+        renderTray();
+        updateHud();
+        return;
+      } catch(e) {
+        console.error("Failed to load state", e);
+      }
+    }
+    newGame();
+  }
+
+  function newGame(){
+    board=Array.from({length:SIZE},()=>Array(SIZE).fill(null));
+    score=0; combo=0; gameOver=false;
+    overlayEl.classList.remove("show");
+    renderBoard();
+    newPieces();
+    updateHud();
+    saveState();
+  }
+
+  /* ---------- buttons ---------- */
+  document.getElementById("newBtn").addEventListener("click",()=>{
+    audio(); S.click(); newGame();
+  });
+  document.getElementById("restartBtn").addEventListener("click",()=>{
+    audio(); S.click(); newGame();
+  });
+  document.getElementById("muteBtn").addEventListener("click",function(){
+    muted=!muted;
+    this.innerHTML = muted ? "&#128263;" : "&#128266;";
+    if(!muted){ audio(); S.click(); }
+  });
+  window.addEventListener("resize",resize);
+  window.addEventListener("blur",()=>{ if(dragData||pending) endGesture(); });
+
+  /* ---------- boot ---------- */
+  best=parseInt(localStorage.getItem("woodblock_best")||"0",10);
+  buildBoard();
+  resize();
+  initGame(); // 저장된 상태 로드 또는 새 게임
+})();
+</script>
+</body>
+</html>
