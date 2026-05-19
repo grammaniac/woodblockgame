@@ -313,6 +313,7 @@
 "use strict";
 (function(){
   const SIZE = 8;
+  const SNAP_RADIUS = 1;   // 배치 보정 범위(칸). 더 너그럽게 하려면 2
   const TYPE_COLORS = [
     "#27b8c8",  // I  - cyan
     "#f1c12e",  // O  - yellow
@@ -596,7 +597,7 @@
       pointerId:pending.pointerId,
       w:piece.shape.w*cell, h:piece.shape.h*cell,
       target:null,
-      brect: boardEl.getBoundingClientRect() // 최적화: 최초 한 번만 위치 계산
+      brect: boardEl.getBoundingClientRect() // 초기값(이후 moveDrag에서 매번 갱신)
     };
     trayEl.children[idx].classList.add("dragging");
     S.pickup();
@@ -636,13 +637,13 @@
   function moveDrag(e){
     e.preventDefault();
     const d=dragData;
+    d.brect = boardEl.getBoundingClientRect();   // 매 이동마다 보드 위치 갱신
     const left = e.clientX - d.w/2;
     const top  = d.touch ? (e.clientY - d.h - d.lift)
                          : (e.clientY - d.h/2);
     d.float.style.left=left+"px";
     d.float.style.top =top+"px";
 
-    // 최적화: 캐싱된 d.brect 재사용으로 리페인트 성능 향상
     const col=Math.round((left-d.brect.left)/d.cell);
     const row=Math.round((top -d.brect.top )/d.cell);
     updateGhost(row,col);
@@ -656,12 +657,36 @@
     }
     ghostCells=[];
   }
+  function findNearestValid(shape,row,col){
+    if(canPlace(shape,row,col)) return {row,col};
+    for(let d=1; d<=SNAP_RADIUS; d++){
+      let best=null, bestDist=Infinity;
+      for(let dr=-d; dr<=d; dr++){
+        for(let dc=-d; dc<=d; dc++){
+          if(Math.max(Math.abs(dr),Math.abs(dc))!==d) continue;
+          const rr=row+dr, cc=col+dc;
+          if(canPlace(shape,rr,cc)){
+            const dist=dr*dr+dc*dc;
+            if(dist<bestDist){ bestDist=dist; best={row:rr,col:cc}; }
+          }
+        }
+      }
+      if(best) return best;
+    }
+    return null;
+  }
   function updateGhost(row,col){
     clearGhost();
     if(!dragData) return;
     const shape=dragData.piece.shape;
-    if(!canPlace(shape,row,col)){ dragData.target=null; return; }
-    dragData.target={row,col};
+    const t=findNearestValid(shape,row,col);     // 근처 빈자리 자동 보정
+    if(!t){ dragData.target=null; return; }
+    row=t.row; col=t.col;
+    dragData.target=t;
+
+    // 자석 스냅: 떠 있는 조각을 실제 놓일 칸에 붙임
+    dragData.float.style.left=(dragData.brect.left+col*dragData.cell)+"px";
+    dragData.float.style.top =(dragData.brect.top +row*dragData.cell)+"px";
 
     const occ=new Set();
     for(const [r,c] of shape.cells) occ.add((row+r)+","+(col+c));
