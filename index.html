@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<!-- 뷰포트 설정: 줌 방지 메타 태그 유지 -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>우드 블록 퍼즐</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#1c1208" />
+<title>우드 블록 퀘스트</title>
 <style>
   :root{
     --cell: 44px;
@@ -12,25 +13,76 @@
     --wood-dark:#4a3017;
     --wood:#6b4626;
     --wood-light:#8a5e36;
+    --bg-grad-1:#3a2814;
+    --bg-grad-2:#1c1208;
+    --text-main:#f3e3c8;
+    --text-accent:#f6d486;
+    --text-sub:#c79a5a;
+    --gold:#ffd24a;
+    --board-grad-1:#5a3c22;
+    --board-grad-2:#3d2814;
+    --slot-grad-1:#6b4626;
+    --slot-grad-2:#3d2814;
+    --hole-grad-1:#7a5836;
+    --hole-grad-2:#5e4126;
+    --frame-stripe: rgba(0,0,0,.10);
   }
+  /* Theme: Neon */
+  body.theme-neon{
+    --wood-dark:#1a1530;
+    --wood:#2a1f55;
+    --wood-light:#3d2d80;
+    --bg-grad-1:#1a0d3d;
+    --bg-grad-2:#06031a;
+    --text-main:#e0d4ff;
+    --text-accent:#7df9ff;
+    --text-sub:#a98aff;
+    --gold:#ff5ed4;
+    --board-grad-1:#1f1542;
+    --board-grad-2:#0c0825;
+    --slot-grad-1:#2a1f55;
+    --slot-grad-2:#16104a;
+    --hole-grad-1:#2e2370;
+    --hole-grad-2:#1a1450;
+    --frame-stripe: rgba(125,249,255,.08);
+  }
+  /* Theme: Crystal */
+  body.theme-crystal{
+    --wood-dark:#1a3a4a;
+    --wood:#2e5a72;
+    --wood-light:#4f87a8;
+    --bg-grad-1:#0e2a3a;
+    --bg-grad-2:#04141d;
+    --text-main:#e8f4ff;
+    --text-accent:#a0e8ff;
+    --text-sub:#6cb4d0;
+    --gold:#ffd24a;
+    --board-grad-1:#1b3f55;
+    --board-grad-2:#0a1f2d;
+    --slot-grad-1:#2e5a72;
+    --slot-grad-2:#15384c;
+    --hole-grad-1:#3f6e88;
+    --hole-grad-2:#244d62;
+    --frame-stripe: rgba(160,232,255,.08);
+  }
+
   *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html,body{ height:100%; }
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     background:
-      radial-gradient(ellipse at 50% 0%, #3a2814 0%, #1c1208 70%);
-    color:#f3e3c8;
+      radial-gradient(ellipse at 50% 0%, var(--bg-grad-1) 0%, var(--bg-grad-2) 70%);
+    color:var(--text-main);
     display:flex; flex-direction:column; align-items:center;
     min-height:100%;
     padding:14px 10px 24px;
-    
-    /* 모바일 스크롤 제어 및 텍스트 선택 방지 */
-    overflow:hidden; 
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    overflow:hidden;
     user-select:none; -webkit-user-select:none;
-    
-    /* [수정됨] 전체 화면의 더블 탭 줌 방지 및 바운스 스크롤 방지 */
-    touch-action: manipulation; 
+    touch-action: manipulation;
     overscroll-behavior: none;
+    transition: background .4s ease;
   }
 
   /* ---------- header ---------- */
@@ -38,43 +90,78 @@
     width:100%; max-width:480px;
     display:flex; align-items:center; justify-content:space-between;
     margin-bottom:10px;
+    gap:6px;
   }
   .title{
-    font-size:21px; font-weight:800; letter-spacing:.5px;
-    color:#f6d486;
+    font-size:19px; font-weight:800; letter-spacing:.5px;
+    color:var(--text-accent);
     text-shadow:0 2px 0 #5c3c1f, 0 3px 6px rgba(0,0,0,.6);
+    flex-shrink: 0;
   }
-  .title small{ display:block; font-size:10px; letter-spacing:3px; color:#c79a5a; font-weight:600;}
+  .title small{ display:block; font-size:9px; letter-spacing:2.5px; color:var(--text-sub); font-weight:600;}
   .iconbtn{
-    width:38px; height:38px; border:none; border-radius:11px;
-    background:linear-gradient(160deg,#8a5e36,#5c3c1f);
-    color:#f6d486; font-size:17px; cursor:pointer;
+    width:36px; height:36px; border:none; border-radius:11px;
+    background:linear-gradient(160deg,var(--wood-light),var(--wood-dark));
+    color:var(--text-accent); font-size:16px; cursor:pointer;
     box-shadow:0 3px 0 #3a2510, inset 0 1px 1px rgba(255,255,255,.25);
     display:flex; align-items:center; justify-content:center;
     transition:transform .08s;
+    flex-shrink:0;
   }
   .iconbtn:active{ transform:translateY(2px); box-shadow:0 1px 0 #3a2510; }
-  .btnrow{ display:flex; gap:8px; }
+  .iconbtn.alert{
+    animation: pulse 1.4s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ box-shadow:0 3px 0 #3a2510, inset 0 1px 1px rgba(255,255,255,.25), 0 0 0 0 rgba(255,210,74,.7); }
+    50%{ box-shadow:0 3px 0 #3a2510, inset 0 1px 1px rgba(255,255,255,.25), 0 0 0 6px rgba(255,210,74,0); }
+  }
+  .btnrow{ display:flex; gap:6px; }
+
+  /* coin badge */
+  .coinbox{
+    display:flex; align-items:center; gap:4px;
+    padding:5px 9px;
+    background:linear-gradient(160deg,#6b4626,#3d2814);
+    border-radius:11px;
+    box-shadow:inset 0 1px 2px rgba(255,255,255,.15);
+    font-weight:800; font-size:13px;
+    color:var(--gold);
+    flex-shrink:0;
+  }
+  .coinbox .icon{ font-size:14px; }
 
   /* ---------- score panel ---------- */
   .scorewrap{
     width:100%; max-width:480px;
-    display:flex; gap:10px; margin-bottom:12px;
+    display:flex; gap:8px; margin-bottom:10px;
   }
   .scorecard{
-    flex:1; background:linear-gradient(160deg,#7a5230,#4a3017);
-    border-radius:13px; padding:8px 12px;
+    flex:1; background:linear-gradient(160deg,var(--wood),var(--wood-dark));
+    border-radius:12px; padding:7px 10px;
     box-shadow:inset 0 1px 2px rgba(255,255,255,.18), 0 3px 6px rgba(0,0,0,.45);
     text-align:center;
   }
-  .scorecard .lbl{ font-size:10px; letter-spacing:2px; color:#c79a5a; font-weight:700; }
-  .scorecard .val{ font-size:24px; font-weight:800; color:#f6d486; line-height:1.15; }
-  .scorecard.combo .val{ color:#ffd24a; }
+  .scorecard .lbl{ font-size:9px; letter-spacing:1.5px; color:var(--text-sub); font-weight:700; }
+  .scorecard .val{ font-size:21px; font-weight:800; color:var(--text-accent); line-height:1.15; }
+  .scorecard.combo .val{ color:var(--gold); }
+
+  .modebar{
+    width:100%; max-width:480px;
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:8px;
+    font-size:11px; color:var(--text-sub);
+    font-weight:700;
+    letter-spacing:1px;
+  }
+  .modebar .modename{ color:var(--text-accent); }
+  .modebar .objective{ font-size:11px; }
+  .modebar .objective b{ color:var(--gold); font-weight:800; }
 
   /* ---------- frame & board ---------- */
   .frame{
     background:
-      repeating-linear-gradient(91deg, rgba(0,0,0,.10) 0 3px, transparent 3px 9px),
+      repeating-linear-gradient(91deg, var(--frame-stripe) 0 3px, transparent 3px 9px),
       linear-gradient(160deg,var(--wood-light),var(--wood-dark));
     padding:14px;
     border-radius:20px;
@@ -83,6 +170,7 @@
       inset 0 -6px 12px rgba(0,0,0,.45),
       0 12px 28px rgba(0,0,0,.6);
     border:3px solid #2e1d0c;
+    position:relative;
   }
   .frame.shake{ animation:shake .4s ease; }
   @keyframes shake{
@@ -99,21 +187,18 @@
     grid-template-rows:repeat(8,var(--cell));
     background:
       repeating-linear-gradient(0deg, rgba(0,0,0,.13) 0 2px, transparent 2px 8px),
-      linear-gradient(160deg,#5a3c22,#3d2814);
+      linear-gradient(160deg,var(--board-grad-1),var(--board-grad-2));
     border-radius:10px;
     box-shadow:inset 0 3px 10px rgba(0,0,0,.6);
-    /* [수정됨] 드래그가 일어나는 보드는 브라우저 기본 터치 동작을 완전히 막음 */
     touch-action: none;
   }
   .cell{ position:relative; width:var(--cell); height:var(--cell); }
-  /* recessed empty hole */
   .cell::before{
     content:""; position:absolute; inset:7%;
     border-radius:22%;
-    background:linear-gradient(160deg,#7a5836,#5e4126);
+    background:linear-gradient(160deg,var(--hole-grad-1),var(--hole-grad-2));
     box-shadow:inset 0 2px 4px rgba(0,0,0,.5), inset 0 -2px 3px rgba(255,255,255,.07);
   }
-  /* ghost preview */
   .cell.ghost::after{
     content:""; position:absolute; inset:7%;
     border-radius:22%;
@@ -124,7 +209,14 @@
     opacity:.7;
     box-shadow:0 0 8px 2px rgba(255,255,255,.7);
   }
-  /* filled block */
+  .cell.hint-glow::before{
+    animation: hintglow 1.2s ease infinite;
+  }
+  @keyframes hintglow{
+    0%,100%{ box-shadow:inset 0 2px 4px rgba(0,0,0,.5), 0 0 0 0 rgba(255,210,74,0); }
+    50%{ box-shadow:inset 0 2px 4px rgba(0,0,0,.5), 0 0 12px 3px rgba(255,210,74,.7); }
+  }
+
   .blk{
     position:absolute; inset:7%;
     border-radius:22%;
@@ -161,18 +253,38 @@
     100%{ transform:scale(0); filter:brightness(3); opacity:0; }
   }
 
+  /* Special block markers */
+  .blk .special{
+    position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    font-size:0.7em; pointer-events:none;
+    text-shadow:0 1px 2px rgba(0,0,0,.7);
+  }
+  .blk.rainbow{
+    background:
+      conic-gradient(from 0deg,
+        #e8463d, #ee8f2f, #f1c12e, #54bd45, #27b8c8, #3f7ad9, #a45ad0, #e8463d);
+    animation:spinbg 3s linear infinite;
+  }
+  @keyframes spinbg{
+    from{filter:hue-rotate(0deg);} to{filter:hue-rotate(360deg);}
+  }
+  .blk.golden{
+    background:
+      linear-gradient(150deg, #fff5b0 0%, #ffd24a 48%, #b07a00 100%);
+  }
+
   /* ---------- tray ---------- */
   .tray{
     width:100%; max-width:480px;
-    margin-top:16px;
+    margin-top:14px;
     display:grid; grid-template-columns:repeat(3,1fr);
     gap:8px;
-    /* [수정됨] 트레이 영역도 드래그가 시작되므로 브라우저 동작 막음 */
     touch-action: none;
   }
   .slot{
     height:calc(var(--traycell) * 4.4);
-    background:linear-gradient(160deg,#6b4626,#3d2814);
+    background:linear-gradient(160deg,var(--slot-grad-1),var(--slot-grad-2));
     border-radius:14px;
     box-shadow:inset 0 2px 5px rgba(0,0,0,.5), 0 3px 5px rgba(0,0,0,.4);
     display:flex; align-items:center; justify-content:center;
@@ -186,6 +298,48 @@
     0%{ transform:rotate(-90deg) scale(.65); }
     60%{ transform:rotate(9deg) scale(1.1); }
     100%{ transform:rotate(0deg) scale(1); }
+  }
+
+  /* ---------- booster bar ---------- */
+  .boosterbar{
+    width:100%; max-width:480px;
+    display:flex; justify-content:space-around;
+    margin-top:10px;
+    padding:6px 8px;
+    background:linear-gradient(160deg, rgba(0,0,0,.3), rgba(0,0,0,.5));
+    border-radius:14px;
+    box-shadow:inset 0 1px 2px rgba(255,255,255,.08);
+  }
+  .booster{
+    width:48px; height:48px;
+    border:none; border-radius:11px;
+    background:linear-gradient(160deg,var(--wood-light),var(--wood-dark));
+    color:var(--text-accent);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    cursor:pointer;
+    position:relative;
+    box-shadow:0 2px 0 #3a2510, inset 0 1px 1px rgba(255,255,255,.2);
+    transition:transform .08s;
+    font-size:11px; font-weight:800;
+  }
+  .booster:active{ transform:translateY(2px); box-shadow:0 0 0 #3a2510; }
+  .booster .bicon{ font-size:18px; line-height:1; margin-bottom:1px; }
+  .booster .bcount{
+    position:absolute; top:-3px; right:-3px;
+    background:var(--gold); color:#3a2510;
+    font-size:10px; font-weight:900;
+    min-width:16px; height:16px; padding:0 3px;
+    border-radius:8px;
+    line-height:16px;
+    box-shadow:0 1px 2px rgba(0,0,0,.5);
+  }
+  .booster.active{
+    background:linear-gradient(160deg, var(--gold), #c08020);
+    color:#3a2510;
+    box-shadow:0 0 0 2px var(--gold), 0 2px 0 #3a2510;
+  }
+  .booster:disabled{
+    opacity:.4; cursor:default;
   }
 
   /* ---------- floating drag piece ---------- */
@@ -224,7 +378,7 @@
     left:50%; top:38%;
     transform:translate(-50%,-50%);
     font-weight:900; font-size:42px;
-    color:#ffd24a;
+    color:var(--gold);
     text-shadow:0 0 18px rgba(255,170,40,.9), 0 4px 6px rgba(0,0,0,.7);
     animation:combo .9s ease-out forwards;
   }
@@ -244,12 +398,39 @@
     100%{ transform:translate(-50%,-115%) scale(.9); opacity:0; }
   }
 
-  /* ---------- game over modal ---------- */
+  /* ---------- achievement toast ---------- */
+  .toast{
+    position:fixed; z-index:70;
+    left:50%; top:20px;
+    transform:translate(-50%, -100%);
+    background:linear-gradient(160deg, var(--gold), #c08020);
+    color:#3a2510;
+    padding:10px 18px;
+    border-radius:13px;
+    font-weight:800;
+    box-shadow:0 8px 20px rgba(0,0,0,.5);
+    display:flex; align-items:center; gap:10px;
+    pointer-events:none;
+    animation:toastin 3.5s ease forwards;
+    max-width: 90vw;
+  }
+  @keyframes toastin{
+    0%{ transform:translate(-50%, -100%); }
+    10%{ transform:translate(-50%, 0); }
+    85%{ transform:translate(-50%, 0); }
+    100%{ transform:translate(-50%, -100%); }
+  }
+  .toast .ticon{ font-size:24px; }
+  .toast .ttitle{ font-size:11px; color:#5c3c1f; letter-spacing:1.5px; }
+  .toast .tbody{ font-size:14px; }
+
+  /* ---------- modal common ---------- */
   .overlay{
     position:fixed; inset:0; z-index:80;
     background:rgba(10,6,2,.78);
     display:none; align-items:center; justify-content:center;
     backdrop-filter:blur(3px);
+    padding:20px;
   }
   .overlay.show{ display:flex; animation:fade .25s ease; }
   @keyframes fade{ from{opacity:0;} to{opacity:1;} }
@@ -259,40 +440,259 @@
       linear-gradient(160deg,var(--wood-light),var(--wood-dark));
     border:3px solid #2e1d0c;
     border-radius:22px;
-    padding:28px 30px;
+    padding:24px 26px;
     text-align:center;
     box-shadow:0 18px 40px rgba(0,0,0,.7), inset 0 2px 3px rgba(255,255,255,.2);
     animation:popin .3s ease;
-    max-width:300px;
+    max-width:340px;
+    width:100%;
+    max-height:90vh;
+    overflow-y:auto;
   }
   @keyframes popin{ from{transform:scale(.7);opacity:0;} to{transform:scale(1);opacity:1;} }
-  .modal h2{ font-size:26px; color:#f6d486; margin-bottom:6px; }
-  .modal .sub{ font-size:13px; color:#c79a5a; margin-bottom:16px; }
-  .modal .finalscore{ font-size:46px; font-weight:900; color:#ffd24a;
+  .modal h2{ font-size:24px; color:var(--text-accent); margin-bottom:6px; }
+  .modal .sub{ font-size:12px; color:var(--text-sub); margin-bottom:14px; }
+  .modal .finalscore{ font-size:42px; font-weight:900; color:var(--gold);
     text-shadow:0 2px 6px rgba(0,0,0,.6); line-height:1; }
-  .modal .best{ font-size:13px; color:#e0bd84; margin:8px 0 20px; }
+  .modal .best{ font-size:12px; color:#e0bd84; margin:8px 0 16px; }
   .bigbtn{
     border:none; cursor:pointer;
-    background:linear-gradient(160deg,#ffd24a,#e09020);
-    color:#3a2510; font-weight:800; font-size:17px;
-    padding:13px 30px; border-radius:13px;
+    background:linear-gradient(160deg,var(--gold),#e09020);
+    color:#3a2510; font-weight:800; font-size:16px;
+    padding:11px 26px; border-radius:13px;
     box-shadow:0 4px 0 #9c6010, inset 0 1px 1px rgba(255,255,255,.5);
     transition:transform .08s;
+    margin: 4px;
   }
   .bigbtn:active{ transform:translateY(3px); box-shadow:0 1px 0 #9c6010; }
+  .bigbtn.secondary{
+    background:linear-gradient(160deg,var(--wood-light),var(--wood-dark));
+    color:var(--text-accent);
+    box-shadow:0 4px 0 #3a2510, inset 0 1px 1px rgba(255,255,255,.2);
+  }
+  .bigbtn.secondary:active{ box-shadow:0 1px 0 #3a2510; }
 
-  .hint{ margin-top:14px; font-size:11px; color:#9c7d52; text-align:center; }
+  /* main menu */
+  .menu-modes{
+    display:flex; flex-direction:column; gap:8px;
+    margin:14px 0;
+  }
+  .menu-mode{
+    display:flex; align-items:center; gap:12px;
+    padding:11px 14px;
+    background:linear-gradient(160deg, rgba(0,0,0,.25), rgba(0,0,0,.45));
+    border-radius:12px;
+    cursor:pointer;
+    border: 2px solid transparent;
+    transition: border-color .15s;
+    text-align:left;
+    width:100%;
+    color:var(--text-main);
+    font-family:inherit;
+  }
+  .menu-mode:active{ border-color: var(--gold); }
+  .menu-mode .mode-icon{ font-size:28px; }
+  .menu-mode .mode-name{ font-weight:800; font-size:15px; color:var(--text-accent); }
+  .menu-mode .mode-desc{ font-size:11px; color:var(--text-sub); }
+  .menu-mode .badge{
+    margin-left:auto;
+    background:var(--gold); color:#3a2510;
+    padding:2px 8px; border-radius:8px;
+    font-size:10px; font-weight:900;
+  }
+  .menu-mode.locked{ opacity:.5; }
+  .menu-mode.locked .badge{ background:#999; color:#444; }
+
+  .menu-foot{
+    display:flex; justify-content:center; gap:8px;
+    margin-top:10px;
+  }
+  .menu-foot .iconbtn{
+    width:42px; height:42px; font-size:18px;
+  }
+
+  /* stats grid */
+  .stats-grid{
+    display:grid; grid-template-columns:1fr 1fr; gap:8px;
+    margin:14px 0;
+  }
+  .stat-cell{
+    background:linear-gradient(160deg, rgba(0,0,0,.25), rgba(0,0,0,.45));
+    padding:8px 10px; border-radius:10px;
+    text-align:left;
+  }
+  .stat-cell .lbl{ font-size:10px; color:var(--text-sub); letter-spacing:1px; font-weight:700; }
+  .stat-cell .val{ font-size:18px; font-weight:800; color:var(--text-accent); }
+  .shop-cell{
+    background:linear-gradient(160deg, rgba(0,0,0,.3), rgba(0,0,0,.5));
+    padding:10px;
+    border-radius:12px;
+    text-align:center;
+    cursor:pointer;
+    border:2px solid transparent;
+    transition:transform .08s, border-color .15s;
+  }
+  .shop-cell:active{ transform:translateY(2px); border-color: var(--gold); }
+  .shop-cell.cant-afford{ opacity:.5; cursor:not-allowed; }
+  .shop-cell .icon{ font-size:28px; }
+  .shop-cell .nm{ font-size:12px; font-weight:800; color:var(--text-accent); margin-top:2px; }
+  .shop-cell .price{
+    font-size:12px; font-weight:900; color:var(--gold);
+    background: rgba(0,0,0,.3);
+    border-radius:10px;
+    padding:3px 8px;
+    margin-top:6px; display:inline-block;
+  }
+  .shop-cell .qty{ font-size:11px; color:var(--text-sub); }
+
+  /* settings */
+  .setting-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:9px 4px;
+    border-bottom: 1px solid rgba(0,0,0,.3);
+  }
+  .setting-row:last-child{ border-bottom:none; }
+  .setting-row .lbl{ font-size:13px; color:var(--text-main); font-weight:600; }
+  .theme-picker{ display:flex; gap:6px; }
+  .theme-chip{
+    width:34px; height:34px; border-radius:50%;
+    border:2px solid rgba(255,255,255,.2);
+    cursor:pointer;
+    transition: transform .1s;
+  }
+  .theme-chip.selected{ border-color: var(--gold); transform:scale(1.1); }
+  .theme-chip[data-theme="classic"]{ background:radial-gradient(circle, #8a5e36, #3a2814); }
+  .theme-chip[data-theme="neon"]{ background:radial-gradient(circle, #3d2d80, #06031a); }
+  .theme-chip[data-theme="crystal"]{ background:radial-gradient(circle, #4f87a8, #04141d); }
+  .toggle{
+    width:44px; height:24px; border-radius:12px;
+    background:#5c3c1f; position:relative; cursor:pointer;
+    transition: background .2s;
+  }
+  .toggle::after{
+    content:""; position:absolute; top:2px; left:2px;
+    width:20px; height:20px; border-radius:50%;
+    background:var(--text-accent);
+    transition: left .2s;
+  }
+  .toggle.on{ background: var(--gold); }
+  .toggle.on::after{ left:22px; }
+
+  /* achievements list */
+  .ach-list{
+    display:flex; flex-direction:column; gap:6px;
+    max-height:60vh; overflow-y:auto;
+    margin: 10px 0;
+    text-align:left;
+  }
+  .ach-row{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 10px;
+    background:linear-gradient(160deg, rgba(0,0,0,.2), rgba(0,0,0,.4));
+    border-radius:10px;
+  }
+  .ach-row.done{
+    background:linear-gradient(160deg, rgba(255,210,74,.2), rgba(255,210,74,.05));
+  }
+  .ach-icon{ font-size:22px; filter:grayscale(1) opacity(.4); }
+  .ach-row.done .ach-icon{ filter:none; }
+  .ach-info{ flex:1; min-width:0; }
+  .ach-info .nm{ font-size:13px; font-weight:800; color:var(--text-accent); }
+  .ach-info .ds{ font-size:11px; color:var(--text-sub); }
+  .ach-row.done .ach-info .ds{ color: var(--gold); }
+
+  /* tutorial */
+  .tut-overlay{
+    position:fixed; inset:0; z-index:90;
+    background:rgba(10,6,2,.85);
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .tut-overlay.show{ display:flex; animation:fade .25s ease; }
+  .tut-card{
+    max-width:360px;
+    background: linear-gradient(160deg,var(--wood-light),var(--wood-dark));
+    border:3px solid #2e1d0c;
+    border-radius:18px;
+    padding:20px 22px;
+    text-align:center;
+  }
+  .tut-card .step{ font-size:11px; color:var(--text-sub); letter-spacing:2px; font-weight:700; }
+  .tut-card h3{ font-size:20px; color:var(--text-accent); margin:6px 0 10px; }
+  .tut-card p{ font-size:13px; color:var(--text-main); line-height:1.5; margin-bottom:14px; }
+
+  /* hint */
+  .hint{ margin-top:12px; font-size:11px; color:#9c7d52; text-align:center; }
+
+  /* tray attention pulse for new pieces */
+  .slot.new-piece{
+    animation: slotpulse 0.6s ease 2;
+  }
+  @keyframes slotpulse{
+    0%,100%{ transform:scale(1); }
+    50%{ transform:scale(1.06); box-shadow:0 0 0 3px var(--gold), inset 0 2px 5px rgba(0,0,0,.5); }
+  }
+
+  /* timer bar for time attack */
+  .timerbar{
+    width:100%; max-width:480px;
+    height:6px;
+    background:rgba(0,0,0,.45);
+    border-radius:3px;
+    overflow:hidden;
+    margin-bottom:8px;
+    display:none;
+  }
+  .timerbar.active{ display:block; }
+  .timerbar .fill{
+    height:100%;
+    background:linear-gradient(90deg, #54bd45, var(--gold), #e8463d);
+    transition: width 0.1s linear;
+    width:100%;
+  }
+
+  /* daily streak */
+  .streak{
+    display:flex; gap:6px; justify-content:center;
+    margin: 12px 0;
+  }
+  .streak-day{
+    flex:1; min-width:0;
+    background:linear-gradient(160deg, rgba(0,0,0,.3), rgba(0,0,0,.5));
+    border-radius:8px;
+    padding:6px 4px;
+    text-align:center;
+    font-size:10px;
+  }
+  .streak-day.claimed{
+    background:linear-gradient(160deg, rgba(84,189,69,.4), rgba(84,189,69,.2));
+  }
+  .streak-day.today{
+    background:linear-gradient(160deg, var(--gold), #c08020);
+    color:#3a2510;
+    box-shadow:0 0 12px rgba(255,210,74,.5);
+  }
+  .streak-day .d{ font-weight:800; }
+  .streak-day .r{ font-size:11px; font-weight:900; }
 </style>
 </head>
 <body>
 
   <div class="topbar">
-    <div class="title">우드 블록 퍼즐<small>BLOCK PUZZLE</small></div>
+    <button class="iconbtn" id="menuBtn" aria-label="메뉴" title="메뉴">&#9776;</button>
+    <div class="title">우드 블록 퀘스트<small>BLOCK QUEST</small></div>
     <div class="btnrow">
-      <button class="iconbtn" id="muteBtn" aria-label="음소거 토글" title="소리">&#128266;</button>
-      <button class="iconbtn" id="newBtn" aria-label="새 게임 시작" title="새 게임">&#8635;</button>
+      <div class="coinbox"><span class="icon">🪙</span><span id="coinCount">0</span></div>
+      <button class="iconbtn" id="newBtn" aria-label="새 게임" title="새 게임">&#8635;</button>
     </div>
   </div>
+
+  <div class="modebar">
+    <div>모드: <span class="modename" id="modeName">클래식</span></div>
+    <div class="objective" id="objective"></div>
+  </div>
+
+  <div class="timerbar" id="timerbar"><div class="fill" id="timerFill"></div></div>
 
   <div class="scorewrap">
     <div class="scorecard"><div class="lbl">SCORE</div><div class="val" id="score">0</div></div>
@@ -306,48 +706,181 @@
 
   <div class="tray" id="tray"></div>
 
-  <div class="hint">조각을 탭하면 회전 · 드래그해서 배치 · 가로/세로 줄을 채우면 사라집니다</div>
+  <div class="boosterbar" id="boosterbar">
+    <button class="booster" data-booster="hammer" title="망치 - 한 블록 제거"><span class="bicon">🔨</span>망치<span class="bcount" id="b-hammer">0</span></button>
+    <button class="booster" data-booster="bomb" title="폭탄 - 3x3 제거"><span class="bicon">💣</span>폭탄<span class="bcount" id="b-bomb">0</span></button>
+    <button class="booster" data-booster="refresh" title="새로고침 - 조각 교체"><span class="bicon">🔄</span>교체<span class="bcount" id="b-refresh">0</span></button>
+    <button class="booster" data-booster="undo" title="되돌리기 - 이전 수"><span class="bicon">↩️</span>취소<span class="bcount" id="b-undo">0</span></button>
+    <button class="booster" data-booster="hint" title="힌트 - 배치 위치"><span class="bicon">💡</span>힌트<span class="bcount" id="b-hint">0</span></button>
+  </div>
 
+  <div class="hint">조각을 탭하면 회전 · 드래그로 배치 · 같은 색 줄은 보너스</div>
+
+  <!-- Main menu modal -->
+  <div class="overlay" id="menuOverlay">
+    <div class="modal">
+      <h2>우드 블록 퀘스트</h2>
+      <div class="sub">모드를 선택하세요</div>
+      <div class="menu-modes" id="modeList"></div>
+      <div class="menu-foot">
+        <button class="iconbtn" id="shopBtn" title="상점">🛒</button>
+        <button class="iconbtn" id="statsBtn" title="통계">📊</button>
+        <button class="iconbtn" id="achBtn" title="도전과제">🏆</button>
+        <button class="iconbtn" id="dailyBtn" title="일일 보상">🎁</button>
+        <button class="iconbtn" id="settingsBtn" title="설정">⚙️</button>
+        <button class="iconbtn" id="howtoBtn" title="튜토리얼">❓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game over modal -->
   <div class="overlay" id="overlay">
     <div class="modal">
-      <h2>게임 오버</h2>
-      <div class="sub">더 놓을 곳이 없어요!</div>
+      <h2 id="goverTitle">게임 오버</h2>
+      <div class="sub" id="goverSub">더 놓을 곳이 없어요!</div>
       <div class="finalscore" id="finalScore">0</div>
       <div class="best" id="finalBest">최고 점수 0</div>
-      <button class="bigbtn" id="restartBtn">다시 하기</button>
+      <div id="rewardBox" style="margin-bottom:10px; color:var(--gold); font-weight:800;"></div>
+      <div>
+        <button class="bigbtn" id="restartBtn">다시 하기</button>
+        <button class="bigbtn secondary" id="toMenuBtn">메뉴</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pause modal -->
+  <div class="overlay" id="pauseOverlay">
+    <div class="modal">
+      <h2>일시정지</h2>
+      <div class="sub">잠시 쉬어가세요</div>
+      <div style="margin-top:12px;">
+        <button class="bigbtn" id="resumeBtn">계속하기</button>
+        <button class="bigbtn secondary" id="quitBtn">메뉴로</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shop modal -->
+  <div class="overlay" id="shopOverlay">
+    <div class="modal">
+      <h2>상점 🛒</h2>
+      <div class="sub">코인으로 부스터를 구매하세요</div>
+      <div class="stats-grid" id="shopGrid"></div>
+      <button class="bigbtn secondary" data-close="shopOverlay">닫기</button>
+    </div>
+  </div>
+
+  <!-- Stats modal -->
+  <div class="overlay" id="statsOverlay">
+    <div class="modal">
+      <h2>통계</h2>
+      <div class="sub">지금까지의 여정</div>
+      <div class="stats-grid" id="statsGrid"></div>
+      <button class="bigbtn secondary" data-close="statsOverlay">닫기</button>
+    </div>
+  </div>
+
+  <!-- Achievement modal -->
+  <div class="overlay" id="achOverlay">
+    <div class="modal">
+      <h2>도전과제</h2>
+      <div class="sub" id="achSub">0 / 0 완료</div>
+      <div class="ach-list" id="achList"></div>
+      <button class="bigbtn secondary" data-close="achOverlay">닫기</button>
+    </div>
+  </div>
+
+  <!-- Daily reward modal -->
+  <div class="overlay" id="dailyOverlay">
+    <div class="modal">
+      <h2>일일 보상</h2>
+      <div class="sub" id="dailySub">매일 접속하면 코인을 드려요!</div>
+      <div class="streak" id="streakRow"></div>
+      <button class="bigbtn" id="claimBtn">받기</button>
+      <button class="bigbtn secondary" data-close="dailyOverlay">닫기</button>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div class="overlay" id="settingsOverlay">
+    <div class="modal">
+      <h2>설정</h2>
+      <div style="margin: 14px 0;">
+        <div class="setting-row">
+          <div class="lbl">테마</div>
+          <div class="theme-picker" id="themePicker">
+            <div class="theme-chip" data-theme="classic" title="클래식"></div>
+            <div class="theme-chip" data-theme="neon" title="네온"></div>
+            <div class="theme-chip" data-theme="crystal" title="크리스탈"></div>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="lbl">효과음</div>
+          <div class="toggle" id="sfxToggle"></div>
+        </div>
+        <div class="setting-row">
+          <div class="lbl">배경음악</div>
+          <div class="toggle" id="bgmToggle"></div>
+        </div>
+        <div class="setting-row">
+          <div class="lbl">진동 (지원시)</div>
+          <div class="toggle" id="vibToggle"></div>
+        </div>
+      </div>
+      <button class="bigbtn" data-close="settingsOverlay">완료</button>
+      <button class="bigbtn secondary" id="resetBtn" style="font-size:11px; padding: 8px 12px;">데이터 초기화</button>
+    </div>
+  </div>
+
+  <!-- Tutorial overlay -->
+  <div class="tut-overlay" id="tutOverlay">
+    <div class="tut-card">
+      <div class="step" id="tutStep">1 / 4</div>
+      <h3 id="tutTitle"></h3>
+      <p id="tutBody"></p>
+      <button class="bigbtn" id="tutNext">다음</button>
+      <button class="bigbtn secondary" id="tutSkip" style="font-size:11px; padding:6px 12px;">건너뛰기</button>
     </div>
   </div>
 
 <script>
 "use strict";
 
-// [추가됨] iOS Safari 등에서 더블 탭 확대 이벤트를 강제로 무력화하는 방어 코드
 document.addEventListener('dblclick', function(event) {
   event.preventDefault();
 }, { passive: false });
 
 (function(){
+  /* ============================================================
+   *  CONSTANTS
+   * ============================================================ */
   const SIZE = 8;
-  const SNAP_RADIUS = 1;   // 배치 보정 범위(칸). 더 너그럽게 하려면 2
+  const SNAP_RADIUS = 1;
   const TYPE_COLORS = [
-    "#27b8c8",  // I  - cyan
-    "#f1c12e",  // O  - yellow
-    "#a45ad0",  // T  - purple
-    "#54bd45",  // S  - green
-    "#e8463d",  // Z  - red
-    "#ee8f2f",  // L  - orange
-    "#3f7ad9"   // J  - blue
+    "#27b8c8","#f1c12e","#a45ad0","#54bd45","#e8463d","#ee8f2f","#3f7ad9"
   ];
+  const SPECIAL_RAINBOW = "__rainbow__";
+  const SPECIAL_GOLDEN  = "__golden__";
 
-  /* ---------- tetromino definitions ---------- */
   const TETROMINOES = [
-    [[0,0],[0,1],[0,2],[0,3]],   // I
-    [[0,0],[0,1],[1,0],[1,1]],   // O
-    [[0,0],[0,1],[0,2],[1,1]],   // T
-    [[0,1],[0,2],[1,0],[1,1]],   // S
-    [[0,0],[0,1],[1,1],[1,2]],   // Z
-    [[0,0],[1,0],[2,0],[2,1]],   // L
-    [[0,1],[1,1],[2,0],[2,1]]    // J
+    [[0,0],[0,1],[0,2],[0,3]],
+    [[0,0],[0,1],[1,0],[1,1]],
+    [[0,0],[0,1],[0,2],[1,1]],
+    [[0,1],[0,2],[1,0],[1,1]],
+    [[0,0],[0,1],[1,1],[1,2]],
+    [[0,0],[1,0],[2,0],[2,1]],
+    [[0,1],[1,1],[2,0],[2,1]]
+  ];
+  // Additional small/large variants (1-block, line-3, square-3, plus, etc.)
+  const EXTRA_PIECES = [
+    [[0,0]],                                    // single
+    [[0,0],[0,1]],                              // 2-line
+    [[0,0],[0,1],[0,2]],                        // 3-line
+    [[0,0],[1,0]],                              // 2-vert
+    [[0,1],[1,0],[1,1],[1,2]],                  // T(small)
+    [[0,0],[0,1],[1,0],[1,1],[2,0]],            // 5-piece L variant
+    [[0,0],[0,2],[1,0],[1,1],[1,2]],            // U
+    [[0,0],[1,0],[1,1],[2,1]],                  // Z small
   ];
 
   function normalize(cells){
@@ -358,7 +891,7 @@ document.addEventListener('dblclick', function(event) {
   }
   function rotate(cells){ return normalize(cells.map(([r,c])=>[c,-r])); }
 
-  const PIECES_DEF = TETROMINOES.map(base=>{
+  function buildStates(base){
     const states=[], seen=new Set();
     let cur=normalize(base);
     for(let i=0;i<4;i++){
@@ -372,14 +905,137 @@ document.addEventListener('dblclick', function(event) {
       cur=rotate(cur);
     }
     return states;
-  });
+  }
 
-  /* ---------- state ---------- */
-  let board, pieces, score, combo, best, dragData=null, gameOver=false;
-  let pending=null;
-  let busy=false;
-  let muted=false;
+  const PIECES_DEF = [...TETROMINOES, ...EXTRA_PIECES].map(buildStates);
 
+  /* ============================================================
+   *  STORAGE
+   * ============================================================ */
+  const KEY = "wbq_v1";
+  const Storage = {
+    data: null,
+    load(){
+      try{
+        const raw = localStorage.getItem(KEY);
+        if(raw){ this.data = JSON.parse(raw); }
+      }catch(e){}
+      if(!this.data) this.data = this.defaults();
+      // merge new defaults for forward-compat
+      const d = this.defaults();
+      for(const k in d){
+        if(this.data[k] === undefined) this.data[k] = d[k];
+      }
+      for(const k in d.stats){
+        if(this.data.stats[k] === undefined) this.data.stats[k] = d.stats[k];
+      }
+      for(const k in d.boosters){
+        if(this.data.boosters[k] === undefined) this.data.boosters[k] = d.boosters[k];
+      }
+      for(const k in d.settings){
+        if(this.data.settings[k] === undefined) this.data.settings[k] = d.settings[k];
+      }
+    },
+    defaults(){
+      return {
+        best: 0,
+        coins: 100,
+        xp: 0,
+        level: 1,
+        achievements: {},
+        boosters: { hammer:1, bomb:1, refresh:2, undo:2, hint:2 },
+        stats: {
+          gamesPlayed: 0,
+          totalScore: 0,
+          totalLines: 0,
+          maxCombo: 0,
+          totalBlocks: 0,
+        },
+        settings: {
+          theme: "classic",
+          sfx: true,
+          bgm: false,
+          vibration: true,
+        },
+        savedRun: null,
+        dailyStreak: 0,
+        dailyLastClaim: null,
+        tutorialDone: false,
+        unlockedModes: { classic: true, challenge: true, timeattack: true, daily: true },
+      };
+    },
+    save(){
+      try{ localStorage.setItem(KEY, JSON.stringify(this.data)); }
+      catch(e){ console.warn("save failed", e); }
+    },
+    reset(){
+      localStorage.removeItem(KEY);
+      this.data = this.defaults();
+    }
+  };
+
+  /* ============================================================
+   *  ACHIEVEMENTS
+   * ============================================================ */
+  const ACHIEVEMENTS = [
+    { id:"first_place", icon:"🌱", name:"첫 발걸음", desc:"첫 조각 배치", check:(c)=> c.totalBlocks>=1, reward:20 },
+    { id:"first_clear", icon:"✨", name:"첫 줄 클리어", desc:"첫 라인 클리어", check:(c)=> c.totalLines>=1, reward:50 },
+    { id:"score_500", icon:"🥉", name:"새내기", desc:"점수 500 달성", check:(c)=> c.bestScore>=500, reward:50 },
+    { id:"score_2000", icon:"🥈", name:"숙련자", desc:"점수 2000 달성", check:(c)=> c.bestScore>=2000, reward:100 },
+    { id:"score_5000", icon:"🥇", name:"전문가", desc:"점수 5000 달성", check:(c)=> c.bestScore>=5000, reward:200 },
+    { id:"score_10000", icon:"💎", name:"마스터", desc:"점수 10000 달성", check:(c)=> c.bestScore>=10000, reward:500 },
+    { id:"combo_3", icon:"🔥", name:"콤보 시작", desc:"3 콤보 달성", check:(c)=> c.maxCombo>=3, reward:50 },
+    { id:"combo_5", icon:"💥", name:"콤보 마스터", desc:"5 콤보 달성", check:(c)=> c.maxCombo>=5, reward:150 },
+    { id:"combo_10", icon:"⚡", name:"콤보 전설", desc:"10 콤보 달성", check:(c)=> c.maxCombo>=10, reward:400 },
+    { id:"lines_100", icon:"🧱", name:"건축가", desc:"누적 라인 100", check:(c)=> c.totalLines>=100, reward:100 },
+    { id:"lines_500", icon:"🏛️", name:"건축 거장", desc:"누적 라인 500", check:(c)=> c.totalLines>=500, reward:300 },
+    { id:"games_10", icon:"🎮", name:"꾸준함", desc:"10판 플레이", check:(c)=> c.gamesPlayed>=10, reward:80 },
+    { id:"games_50", icon:"🎯", name:"열정 플레이어", desc:"50판 플레이", check:(c)=> c.gamesPlayed>=50, reward:250 },
+    { id:"daily_3", icon:"📅", name:"3일 연속", desc:"3일 연속 접속", check:(c)=> c.streak>=3, reward:100 },
+    { id:"daily_7", icon:"🗓️", name:"7일 연속", desc:"7일 연속 접속", check:(c)=> c.streak>=7, reward:500 },
+    { id:"same_color", icon:"🌈", name:"동일 색!", desc:"같은 색 라인 클리어", check:(c)=> c.sameColorClears>=1, reward:75 },
+  ];
+
+  function checkAchievements(){
+    const d = Storage.data;
+    const ctx = {
+      bestScore: d.best,
+      totalLines: d.stats.totalLines,
+      maxCombo: d.stats.maxCombo,
+      gamesPlayed: d.stats.gamesPlayed,
+      totalBlocks: d.stats.totalBlocks,
+      streak: d.dailyStreak,
+      sameColorClears: d.stats.sameColorClears || 0,
+    };
+    for(const a of ACHIEVEMENTS){
+      if(!d.achievements[a.id] && a.check(ctx)){
+        d.achievements[a.id] = Date.now();
+        d.coins += a.reward;
+        showToast("🏆", "도전과제 달성!", a.name + " (+" + a.reward + " 🪙)");
+      }
+    }
+    Storage.save();
+    updateHud();
+  }
+
+  /* ============================================================
+   *  GAME STATE
+   * ============================================================ */
+  let board, pieces, score, combo, gameOver=false;
+  let busy=false, paused=false;
+  let dragData=null, pending=null;
+  let undoSnap = null;
+  let activeBooster = null;
+  let mode = "classic";
+  let modeState = {};
+  let cellEls = [];
+  let bgmGain = null, bgmTimers=[], bgmStarted=false;
+  let lastDragEndTime = 0;
+  let rng = Math.random;  // explicit RNG, swapped to seeded only for daily mode
+
+  /* ============================================================
+   *  DOM
+   * ============================================================ */
   const boardEl   = document.getElementById("board");
   const trayEl    = document.getElementById("tray");
   const frameEl   = document.getElementById("frame");
@@ -387,23 +1043,30 @@ document.addEventListener('dblclick', function(event) {
   const comboEl   = document.getElementById("comboval");
   const bestEl    = document.getElementById("best");
   const overlayEl = document.getElementById("overlay");
+  const menuEl    = document.getElementById("menuOverlay");
+  const pauseEl   = document.getElementById("pauseOverlay");
+  const coinEl    = document.getElementById("coinCount");
+  const modeNameEl= document.getElementById("modeName");
+  const objectiveEl = document.getElementById("objective");
+  const timerBarEl  = document.getElementById("timerbar");
+  const timerFillEl = document.getElementById("timerFill");
 
-  const cellEls = [];
-
-  /* ---------- sound (Web Audio) ---------- */
+  /* ============================================================
+   *  SOUND (Web Audio)
+   * ============================================================ */
   let actx=null, master=null;
   function audio(){
     if(!actx){
       actx = new (window.AudioContext||window.webkitAudioContext)();
       master = actx.createGain();
-      master.gain.value = 0.5;
+      master.gain.value = 0.45;
       master.connect(actx.destination);
     }
     if(actx.state==="suspended") actx.resume();
     return actx;
   }
   function tone(freq,dur,type,vol,delay,glideTo){
-    if(muted) return;
+    if(!Storage.data.settings.sfx) return;
     const a=audio(), t=a.currentTime+(delay||0);
     const o=a.createOscillator(), g=a.createGain();
     o.type=type||"sine";
@@ -416,7 +1079,7 @@ document.addEventListener('dblclick', function(event) {
     o.start(t); o.stop(t+dur+0.03);
   }
   function noise(dur,vol,delay){
-    if(muted) return;
+    if(!Storage.data.settings.sfx) return;
     const a=audio(), t=a.currentTime+(delay||0);
     const len=Math.floor(a.sampleRate*dur);
     const buf=a.createBuffer(1,len,a.sampleRate);
@@ -456,20 +1119,70 @@ document.addEventListener('dblclick', function(event) {
       tone(2093,0.5,"sine",0.12,0.66);
       noise(0.12,0.1,0.4);
     },
+    coin(){ tone(880,0.06,"sine",0.15); tone(1320,0.08,"sine",0.13,0.05); },
+    booster(){ tone(660,0.08,"square",0.14); tone(990,0.08,"sine",0.1,0.06); },
     click(){ tone(600,0.06,"square",0.1); }
   };
 
-  /* ---------- save state ---------- */
-  function saveState() {
-    if(gameOver) {
-      localStorage.removeItem("woodblock_state");
-    } else {
-      const state = { board, pieces, score, combo };
-      localStorage.setItem("woodblock_state", JSON.stringify(state));
+  /* BGM: a simple looping melody using Web Audio */
+  function startBGM(){
+    if(!Storage.data.settings.bgm || bgmStarted) return;
+    audio();
+    bgmStarted = true;
+    bgmGain = actx.createGain();
+    bgmGain.gain.value = 0.07;
+    bgmGain.connect(master);
+    const notes = [
+      [261.63, 0.5],[329.63, 0.5],[392.00, 0.5],[523.25, 0.5],
+      [392.00, 0.5],[329.63, 0.5],[349.23, 0.5],[440.00, 0.5],
+      [392.00, 0.5],[329.63, 0.5],[261.63, 0.5],[329.63, 0.5],
+      [392.00, 0.5],[523.25, 0.5],[493.88, 0.5],[440.00, 0.5],
+    ];
+    let i = 0;
+    const playNext = ()=>{
+      if(!Storage.data.settings.bgm){ stopBGM(); return; }
+      const [f,d] = notes[i % notes.length];
+      const t = actx.currentTime;
+      const o = actx.createOscillator();
+      o.type = "triangle";
+      o.frequency.value = f;
+      const g = actx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.5, t+0.05);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+d*0.9);
+      o.connect(g).connect(bgmGain);
+      o.start(t); o.stop(t+d);
+      // bass note
+      const bo = actx.createOscillator();
+      bo.type = "sine"; bo.frequency.value = f/2;
+      const bg = actx.createGain();
+      bg.gain.setValueAtTime(0.0001, t);
+      bg.gain.exponentialRampToValueAtTime(0.35, t+0.05);
+      bg.gain.exponentialRampToValueAtTime(0.0001, t+d*0.9);
+      bo.connect(bg).connect(bgmGain);
+      bo.start(t); bo.stop(t+d);
+      i++;
+      const id = setTimeout(playNext, d*1000);
+      bgmTimers.push(id);
+    };
+    playNext();
+  }
+  function stopBGM(){
+    bgmTimers.forEach(clearTimeout);
+    bgmTimers = [];
+    bgmStarted = false;
+    if(bgmGain){ try{ bgmGain.disconnect(); }catch(e){} bgmGain=null; }
+  }
+
+  function vibrate(ms){
+    if(Storage.data.settings.vibration && navigator.vibrate){
+      try{ navigator.vibrate(ms); }catch(e){}
     }
   }
 
-  /* ---------- build board ---------- */
+  /* ============================================================
+   *  BOARD BUILD
+   * ============================================================ */
   function buildBoard(){
     boardEl.innerHTML="";
     cellEls.length=0;
@@ -478,9 +1191,12 @@ document.addEventListener('dblclick', function(event) {
       for(let c=0;c<SIZE;c++){
         const cell=document.createElement("div");
         cell.className="cell";
+        cell.dataset.r = r;
+        cell.dataset.c = c;
         const blk=document.createElement("div");
         blk.className="blk";
         cell.appendChild(blk);
+        cell.addEventListener("click", onCellClick);
         boardEl.appendChild(cell);
         row.push(cell);
       }
@@ -488,27 +1204,36 @@ document.addEventListener('dblclick', function(event) {
     }
   }
 
-  /* ---------- sizing ---------- */
   function resize(){
     if(dragData || pending) endGesture();
     const maxW = Math.min(window.innerWidth-26, 460);
-    const maxH = window.innerHeight*0.56;
+    const maxH = window.innerHeight*0.50;
     let cell = Math.floor(Math.min(maxW, maxH)/SIZE);
-    cell = Math.max(30, Math.min(cell, 56));
+    cell = Math.max(28, Math.min(cell, 56));
     document.documentElement.style.setProperty("--cell", cell+"px");
-    document.documentElement.style.setProperty("--traycell", Math.round(cell*0.62)+"px");
+    document.documentElement.style.setProperty("--traycell", Math.round(cell*0.60)+"px");
     renderTray();
   }
 
-  /* ---------- rendering ---------- */
   function renderBoard(){
     for(let r=0;r<SIZE;r++){
       for(let c=0;c<SIZE;c++){
         const cell=cellEls[r][c];
-        cell.classList.remove("ghost","gline");
-        if(board[r][c]){
+        cell.classList.remove("ghost","gline","hint-glow");
+        const v = board[r][c];
+        const blk = cell.querySelector(".blk");
+        blk.classList.remove("rainbow","golden");
+        if(v){
           cell.classList.add("filled");
-          cell.style.setProperty("--c", board[r][c]);
+          if(v.special === SPECIAL_RAINBOW){
+            blk.classList.add("rainbow");
+            cell.style.setProperty("--c", "#fff");
+          }else if(v.special === SPECIAL_GOLDEN){
+            blk.classList.add("golden");
+            cell.style.setProperty("--c", "#ffd24a");
+          }else{
+            cell.style.setProperty("--c", v.color || v);
+          }
         }else{
           cell.classList.remove("filled");
         }
@@ -552,7 +1277,9 @@ document.addEventListener('dblclick', function(event) {
     });
   }
 
-  /* ---------- placement logic ---------- */
+  /* ============================================================
+   *  CORE LOGIC
+   * ============================================================ */
   function canPlace(shape,row,col){
     for(const [r,c] of shape.cells){
       const rr=row+r, cc=col+c;
@@ -582,14 +1309,51 @@ document.addEventListener('dblclick', function(event) {
     return {rows,cols};
   }
 
-  /* ---------- drag & tap ---------- */
+  /* ============================================================
+   *  PIECE GEN with special chance
+   * ============================================================ */
+  function randPiece(){
+    const type=Math.floor(rng()*PIECES_DEF.length);
+    const states=PIECES_DEF[type];
+    const rot=Math.floor(rng()*states.length);
+    let color = TYPE_COLORS[type % TYPE_COLORS.length];
+    let special = null;
+    // small chance of special
+    const r = rng();
+    if(r < 0.04 && states[rot].cells.length === 1){
+      special = SPECIAL_RAINBOW;
+    }else if(r < 0.07 && states[rot].cells.length <= 2){
+      special = SPECIAL_GOLDEN;
+    }
+    return { type, rot, color, shape:states[rot], special };
+  }
+  function newPieces(){
+    pieces=[randPiece(),randPiece(),randPiece()];
+    renderTray();
+    // attention pulse
+    setTimeout(()=>{
+      [...trayEl.children].forEach((s,i)=>{
+        if(pieces[i]){
+          s.classList.remove("new-piece");
+          void s.offsetWidth;
+          s.classList.add("new-piece");
+        }
+      });
+    }, 50);
+  }
+
+  /* ============================================================
+   *  DRAG/TAP
+   * ============================================================ */
   function onSlotDown(e,idx){
-    if(gameOver || busy) return;
+    if(gameOver || busy || paused) return;
+    if(activeBooster){ /* booster mode disables drag */ return; }
     if(e.button && e.button!==0) return;
     if((dragData||pending) && e.pointerType==="mouse") endGesture();
     if(dragData || pending || !pieces[idx]) return;
     e.preventDefault();
     audio();
+    startBGM();
     pending={ idx, x:e.clientX, y:e.clientY, pointerId:e.pointerId };
     try{ document.body.setPointerCapture(e.pointerId); }catch(_){}
     window.addEventListener("pointermove",onMove);
@@ -602,7 +1366,15 @@ document.addEventListener('dblclick', function(event) {
     const idx=pending.idx;
     const piece=pieces[idx];
     const cell=parseInt(getComputedStyle(document.documentElement).getPropertyValue("--cell"));
-    const float=pieceEl(piece.shape,piece.color,cell);
+    let displayColor = piece.color;
+    if(piece.special === SPECIAL_RAINBOW) displayColor = "#fff";
+    if(piece.special === SPECIAL_GOLDEN) displayColor = "#ffd24a";
+    const float=pieceEl(piece.shape, displayColor, cell);
+    if(piece.special === SPECIAL_RAINBOW){
+      float.querySelectorAll(".blk").forEach(b=>b.classList.add("rainbow"));
+    }else if(piece.special === SPECIAL_GOLDEN){
+      float.querySelectorAll(".blk").forEach(b=>b.classList.add("golden"));
+    }
     float.classList.add("floating");
     document.body.appendChild(float);
     const touch = e.pointerType==="touch";
@@ -612,7 +1384,7 @@ document.addEventListener('dblclick', function(event) {
       pointerId:pending.pointerId,
       w:piece.shape.w*cell, h:piece.shape.h*cell,
       target:null,
-      brect: boardEl.getBoundingClientRect() // 초기값(이후 moveDrag에서 매번 갱신)
+      brect: boardEl.getBoundingClientRect()
     };
     trayEl.children[idx].classList.add("dragging");
     S.pickup();
@@ -621,8 +1393,7 @@ document.addEventListener('dblclick', function(event) {
 
   function onMove(e){
     if(e.pointerType==="mouse" && e.buttons===0){
-      endGesture();
-      return;
+      endGesture(); return;
     }
     if(dragData){
       if(e.pointerId===dragData.pointerId) moveDrag(e);
@@ -652,13 +1423,11 @@ document.addEventListener('dblclick', function(event) {
   function moveDrag(e){
     e.preventDefault();
     const d=dragData;
-    d.brect = boardEl.getBoundingClientRect();   // 매 이동마다 보드 위치 갱신
+    d.brect = boardEl.getBoundingClientRect();
     const left = e.clientX - d.w/2;
-    const top  = d.touch ? (e.clientY - d.h - d.lift)
-                         : (e.clientY - d.h/2);
+    const top  = d.touch ? (e.clientY - d.h - d.lift) : (e.clientY - d.h/2);
     d.float.style.left=left+"px";
     d.float.style.top =top+"px";
-
     const col=Math.round((left-d.brect.left)/d.cell);
     const row=Math.round((top -d.brect.top )/d.cell);
     updateGhost(row,col);
@@ -694,12 +1463,10 @@ document.addEventListener('dblclick', function(event) {
     clearGhost();
     if(!dragData) return;
     const shape=dragData.piece.shape;
-    const t=findNearestValid(shape,row,col);     // 근처 빈자리 자동 보정
+    const t=findNearestValid(shape,row,col);
     if(!t){ dragData.target=null; return; }
     row=t.row; col=t.col;
     dragData.target=t;
-
-    // 자석 스냅: 떠 있는 조각을 실제 놓일 칸에 붙임
     dragData.float.style.left=(dragData.brect.left+col*dragData.cell)+"px";
     dragData.float.style.top =(dragData.brect.top +row*dragData.cell)+"px";
 
@@ -720,18 +1487,22 @@ document.addEventListener('dblclick', function(event) {
     filledRows.forEach(r=>{ for(let c=0;c<SIZE;c++) lineSet.add(r+","+c); });
     filledCols.forEach(c=>{ for(let r=0;r<SIZE;r++) lineSet.add(r+","+c); });
 
+    let displayColor = dragData.piece.color;
+    if(dragData.piece.special === SPECIAL_RAINBOW) displayColor = "#aaaaff";
+    if(dragData.piece.special === SPECIAL_GOLDEN) displayColor = "#ffd24a";
+
     for(const [r,c] of shape.cells){
       const rr=row+r, cc=col+c;
       const cell=cellEls[rr][cc];
       cell.classList.add("ghost");
-      cell.style.setProperty("--c",dragData.piece.color);
+      cell.style.setProperty("--c", displayColor);
       ghostCells.push([rr,cc]);
     }
     lineSet.forEach(k=>{
       const [r,c]=k.split(",").map(Number);
       const cell=cellEls[r][c];
       cell.classList.add("ghost","gline");
-      if(!board[r][c] && !occ.has(k)) cell.style.setProperty("--c",dragData.piece.color);
+      if(!board[r][c] && !occ.has(k)) cell.style.setProperty("--c", displayColor);
       ghostCells.push([r,c]);
     });
   }
@@ -747,6 +1518,7 @@ document.addEventListener('dblclick', function(event) {
       dragData.float.remove();
       const slot=trayEl.children[dragData.idx];
       if(slot) slot.classList.remove("dragging");
+      lastDragEndTime = performance.now();
     }
     clearGhost();
     dragData=null;
@@ -762,6 +1534,7 @@ document.addEventListener('dblclick', function(event) {
       commitPlace(idx,piece,row,col);
     }else{
       S.invalid();
+      vibrate(40);
       endGesture();
     }
   }
@@ -778,20 +1551,43 @@ document.addEventListener('dblclick', function(event) {
     const slot=trayEl.children[idx];
     const pe=slot && slot.querySelector(".piece");
     if(pe) pe.classList.add("spin");
-    saveState(); // 회전 상태도 저장
+    saveRun();
   }
 
-  /* ---------- commit a placement ---------- */
+  /* ============================================================
+   *  COMMIT PLACEMENT
+   * ============================================================ */
+  function snapshot(){
+    return {
+      board: board.map(row=>row.map(c=> c ? Object.assign({}, c) : null)),
+      pieces: pieces.map(p=> p ? Object.assign({}, p) : null),
+      score, combo,
+    };
+  }
+  function restoreSnap(s){
+    board = s.board.map(row=>row.map(c=> c ? Object.assign({}, c) : null));
+    pieces = s.pieces.map(p=> p ? Object.assign({}, p) : null);
+    score = s.score; combo = s.combo;
+    renderBoard(); renderTray(); updateHud();
+  }
+
   function commitPlace(idx,piece,row,col){
+    undoSnap = snapshot();
     const placed=[];
     for(const [r,c] of piece.shape.cells){
       const rr=row+r, cc=col+c;
-      board[rr][cc]=piece.color;
+      const cellData = {
+        color: piece.color,
+        special: piece.special || null,
+      };
+      board[rr][cc]= cellData;
       placed.push([rr,cc]);
     }
     pieces[idx]=null;
     score += piece.shape.cells.length;
+    Storage.data.stats.totalBlocks += piece.shape.cells.length;
     S.place();
+    vibrate(10);
     renderBoard();
     placed.forEach(([r,c])=>{
       const cell=cellEls[r][c];
@@ -800,64 +1596,138 @@ document.addEventListener('dblclick', function(event) {
       cell.classList.add("pop");
     });
 
-    const clears=findClears();
-    const lines=clears.rows.length+clears.cols.length;
-
-    if(lines>0){
-      combo++;
-      const cells=[];
-      let sameColorLines=0;
-      clears.rows.forEach(r=>{
-        const c0=board[r][0]; let same=true;
-        for(let c=0;c<SIZE;c++){ cells.push([r,c]); if(board[r][c]!==c0) same=false; }
-        if(same) sameColorLines++;
-      });
-      clears.cols.forEach(c=>{
-        const r0=board[0][c]; let same=true;
-        for(let r=0;r<SIZE;r++){ cells.push([r,c]); if(board[r][c]!==r0) same=false; }
-        if(same) sameColorLines++;
-      });
-      const uniq=[...new Set(cells.map(x=>x.join(",")))].map(s=>s.split(",").map(Number));
-
-      let gain = (lines-sameColorLines)*10 + sameColorLines*30;
-      if(lines>1) gain += (lines-1)*10;
-      if(combo>1) gain += combo*5;
-      score += gain;
-
-      spawnParticles(uniq);
-      uniq.forEach(([r,c])=> cellEls[r][c].classList.add("clearing"));
-
-      const brect=boardEl.getBoundingClientRect();
-      scorePop("+"+gain, brect.left+brect.width/2, brect.top+brect.height/2);
-      if(sameColorLines>0){
+    // Check rainbow trigger
+    let rainbowTriggered = false;
+    for(const [r,c] of placed){
+      if(board[r][c] && board[r][c].special === SPECIAL_RAINBOW){
+        // clear the row+col of this rainbow
+        const cells=[];
+        for(let cc=0; cc<SIZE; cc++) cells.push([r,cc]);
+        for(let rr=0; rr<SIZE; rr++) cells.push([rr,c]);
+        const uniq=[...new Set(cells.map(x=>x.join(",")))].map(s=>s.split(",").map(Number));
+        spawnParticles(uniq);
+        uniq.forEach(([rr,cc])=> cellEls[rr][cc].classList.add("clearing"));
+        const brect=boardEl.getBoundingClientRect();
+        scorePop("+50 🌈", brect.left+brect.width/2, brect.top+brect.height/2);
         S.fanfare();
-        comboBanner("SAME COLOR x3", true);
+        comboBanner("RAINBOW BLAST!", true);
         shake();
-      }else{
-        S.clear(lines,combo);
-        if(lines>=2){
-          comboBanner(lines>=3 ? "TRIPLE!" : "DOUBLE!");
-          shake();
-        }else if(combo>1){
-          comboBanner("COMBO x"+combo);
-        }
+        score += 50;
+        rainbowTriggered = true;
+        busy=true;
+        setTimeout(()=>{
+          uniq.forEach(([rr,cc])=>{
+            board[rr][cc]=null;
+            cellEls[rr][cc].classList.remove("clearing");
+          });
+          renderBoard();
+          busy=false;
+          afterClear();
+        },340);
+        break;
       }
+    }
+    if(rainbowTriggered){
+      updateHud();
+      return;
+    }
 
-      updateHud();
-      busy=true;
-      setTimeout(()=>{
-        uniq.forEach(([r,c])=>{
-          board[r][c]=null;
-          cellEls[r][c].classList.remove("clearing");
+    afterClear();
+
+    function afterClear(){
+      const clears=findClears();
+      const lines=clears.rows.length+clears.cols.length;
+
+      if(lines>0){
+        combo++;
+        if(combo > Storage.data.stats.maxCombo){
+          Storage.data.stats.maxCombo = combo;
+        }
+        const cells=[];
+        let sameColorLines=0;
+        let goldenCount = 0;
+        // For color match: rainbow/golden act as wildcards; we need at least one
+        // normal color and all normal cells must share the same color.
+        function lineSameColor(getCell){
+          let common = null;
+          for(let i=0;i<SIZE;i++){
+            const v = getCell(i);
+            if(!v) return false;
+            if(v.special === SPECIAL_RAINBOW || v.special === SPECIAL_GOLDEN) continue;
+            if(common === null) common = v.color;
+            else if(v.color !== common) return false;
+          }
+          return common !== null;
+        }
+        clears.rows.forEach(r=>{
+          for(let c=0;c<SIZE;c++){
+            cells.push([r,c]);
+            if(board[r][c] && board[r][c].special === SPECIAL_GOLDEN) goldenCount++;
+          }
+          if(lineSameColor(c => board[r][c])) sameColorLines++;
         });
-        renderBoard();
-        busy=false;
+        clears.cols.forEach(c=>{
+          for(let r=0;r<SIZE;r++){
+            cells.push([r,c]);
+            if(board[r][c] && board[r][c].special === SPECIAL_GOLDEN) goldenCount++;
+          }
+          if(lineSameColor(r => board[r][c])) sameColorLines++;
+        });
+        const uniq=[...new Set(cells.map(x=>x.join(",")))].map(s=>s.split(",").map(Number));
+
+        let gain = (lines-sameColorLines)*10 + sameColorLines*30;
+        if(lines>1) gain += (lines-1)*10;
+        if(combo>1) gain += combo*5;
+        gain += goldenCount * 5;
+        score += gain;
+        Storage.data.stats.totalScore += gain;
+        Storage.data.stats.totalLines += lines;
+        if(sameColorLines>0){
+          Storage.data.stats.sameColorClears = (Storage.data.stats.sameColorClears||0)+1;
+        }
+
+        // coins reward: 2 per line, +5 per same color, +3 per combo above 1
+        const coinReward = lines*2 + sameColorLines*5 + Math.max(0,combo-1)*3;
+        Storage.data.coins += coinReward;
+
+        spawnParticles(uniq);
+        uniq.forEach(([r,c])=> cellEls[r][c].classList.add("clearing"));
+
+        const brect=boardEl.getBoundingClientRect();
+        scorePop("+"+gain, brect.left+brect.width/2, brect.top+brect.height/2);
+        scorePop("+"+coinReward+" 🪙", brect.left+brect.width/2, brect.top+brect.height/2 + 26);
+        if(sameColorLines>0){
+          S.fanfare();
+          comboBanner("SAME COLOR!", true);
+          shake();
+          vibrate([20,40,20]);
+        }else{
+          S.clear(lines,combo);
+          vibrate(15);
+          if(lines>=2){
+            comboBanner(lines>=3 ? "TRIPLE!" : "DOUBLE!");
+            shake();
+          }else if(combo>1){
+            comboBanner("COMBO x"+combo);
+          }
+        }
+
+        updateHud();
+        busy=true;
+        setTimeout(()=>{
+          uniq.forEach(([r,c])=>{
+            board[r][c]=null;
+            cellEls[r][c].classList.remove("clearing");
+          });
+          renderBoard();
+          busy=false;
+          finishTurn();
+        },340);
+      }else{
+        combo=0;
+        updateHud();
         finishTurn();
-      },340);
-    }else{
-      combo=0;
-      updateHud();
-      finishTurn();
+      }
     }
   }
 
@@ -867,35 +1737,30 @@ document.addEventListener('dblclick', function(event) {
       newPieces();
       S.newpieces();
     }
+    if(checkModeWin()){
+      return;
+    }
     if(isGameOver()){
       endGame();
     }
-    saveState(); // 진행 상태 저장
+    checkAchievements();
+    saveRun();
   }
 
   function isGameOver(){
     const remain=pieces.filter(p=>p);
     if(remain.length===0) return false;
-    return remain.every(p=> PIECES_DEF[p.type].every(sh=> !canPlaceAnywhere(sh)));
+    // Check current rotation only — player must rotate manually
+    return remain.every(p=> !canPlaceAnywhere(p.shape));
   }
 
-  /* ---------- pieces ---------- */
-  function randPiece(){
-    const type=Math.floor(Math.random()*PIECES_DEF.length);
-    const states=PIECES_DEF[type];
-    const rot=Math.floor(Math.random()*states.length);
-    const color=TYPE_COLORS[type];
-    return { type, rot, color, shape:states[rot] };
-  }
-  function newPieces(){
-    pieces=[randPiece(),randPiece(),randPiece()];
-    renderTray();
-  }
-
-  /* ---------- effects ---------- */
+  /* ============================================================
+   *  EFFECTS
+   * ============================================================ */
   function spawnParticles(cells){
     cells.forEach(([r,c])=>{
-      const color=board[r][c]||"#f7c63e";
+      const v = board[r][c];
+      const color = v ? (v.color || "#f7c63e") : "#f7c63e";
       const rect=cellEls[r][c].getBoundingClientRect();
       const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
       for(let i=0;i<3;i++){
@@ -930,81 +1795,795 @@ document.addEventListener('dblclick', function(event) {
     void frameEl.offsetWidth;
     frameEl.classList.add("shake");
   }
+  function showToast(icon, title, body){
+    const t=document.createElement("div");
+    t.className="toast";
+    t.innerHTML = '<div class="ticon">'+icon+'</div><div><div class="ttitle">'+title+'</div><div class="tbody">'+body+'</div></div>';
+    document.body.appendChild(t);
+    S.coin();
+    setTimeout(()=>t.remove(), 3700);
+  }
 
-  /* ---------- hud ---------- */
+  /* ============================================================
+   *  HUD
+   * ============================================================ */
   function updateHud(){
     scoreEl.textContent=score;
     comboEl.textContent=combo;
-    if(score>best){
-      best=score;
-      localStorage.setItem("woodblock_best",best);
+    if(score>Storage.data.best){
+      Storage.data.best = score;
     }
-    bestEl.textContent=best;
+    bestEl.textContent=Storage.data.best;
+    coinEl.textContent=Storage.data.coins;
+    renderBoosters();
+    renderObjective();
   }
 
-  /* ---------- game over ---------- */
+  function renderObjective(){
+    if(mode === "challenge"){
+      objectiveEl.innerHTML = "목표 <b>"+modeState.target+"</b>";
+    }else if(mode === "timeattack"){
+      objectiveEl.innerHTML = "<b>"+Math.max(0, Math.ceil(modeState.timeLeft))+"</b>초 남음";
+    }else if(mode === "daily"){
+      objectiveEl.innerHTML = "데일리 시드";
+    }else{
+      objectiveEl.innerHTML = "";
+    }
+  }
+
+  function renderBoosters(){
+    const b = Storage.data.boosters;
+    document.getElementById("b-hammer").textContent = b.hammer;
+    document.getElementById("b-bomb").textContent = b.bomb;
+    document.getElementById("b-refresh").textContent = b.refresh;
+    document.getElementById("b-undo").textContent = b.undo;
+    document.getElementById("b-hint").textContent = b.hint;
+    document.querySelectorAll(".booster").forEach(btn=>{
+      const id = btn.dataset.booster;
+      btn.disabled = b[id] <= 0 || gameOver || busy;
+      btn.classList.toggle("active", activeBooster === id);
+    });
+  }
+
+  /* ============================================================
+   *  BOOSTERS
+   * ============================================================ */
+  function setupBoosters(){
+    document.querySelectorAll(".booster").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const id = btn.dataset.booster;
+        useBooster(id);
+      });
+    });
+  }
+  function useBooster(id){
+    if(gameOver || busy || paused) return;
+    const b = Storage.data.boosters;
+    if(b[id] <= 0){
+      S.invalid(); return;
+    }
+    if(id === "refresh"){
+      if(activeBooster) activeBooster = null;
+      b.refresh--;
+      S.booster();
+      newPieces();
+      saveRun(); updateHud();
+    }else if(id === "undo"){
+      if(!undoSnap){ S.invalid(); return; }
+      b.undo--;
+      S.booster();
+      restoreSnap(undoSnap);
+      undoSnap = null;
+      saveRun(); updateHud();
+    }else if(id === "hint"){
+      if(showHint()){
+        b.hint--;
+        S.booster();
+        updateHud();
+      }else{
+        S.invalid();
+      }
+    }else{
+      // toggle activeBooster for click-on-board
+      activeBooster = (activeBooster === id) ? null : id;
+      renderBoosters();
+    }
+  }
+
+  function showHint(){
+    // find first piece with possible placement and glow it
+    for(const p of pieces){
+      if(!p) continue;
+      for(let r=0;r<=SIZE-p.shape.h;r++){
+        for(let c=0;c<=SIZE-p.shape.w;c++){
+          if(canPlace(p.shape,r,c)){
+            for(const [dr,dc] of p.shape.cells){
+              cellEls[r+dr][c+dc].classList.add("hint-glow");
+            }
+            setTimeout(()=>{
+              for(let rr=0;rr<SIZE;rr++)for(let cc=0;cc<SIZE;cc++)
+                cellEls[rr][cc].classList.remove("hint-glow");
+            }, 2500);
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  function onCellClick(e){
+    if(!activeBooster) return;
+    if(gameOver || busy || paused) return;
+    // ignore synthetic clicks after a drag ended
+    if(performance.now() - lastDragEndTime < 350) return;
+    const r = parseInt(e.currentTarget.dataset.r);
+    const c = parseInt(e.currentTarget.dataset.c);
+    if(activeBooster === "hammer"){
+      if(!board[r][c]){ S.invalid(); return; }
+      undoSnap = snapshot();
+      Storage.data.boosters.hammer--;
+      activeBooster = null;
+      board[r][c] = null;
+      cellEls[r][c].classList.add("clearing");
+      spawnParticles([[r,c]]);
+      S.booster();
+      vibrate(20);
+      renderBoosters();
+      setTimeout(()=>{
+        cellEls[r][c].classList.remove("clearing");
+        renderBoard();
+        saveRun();
+      }, 300);
+    }else if(activeBooster === "bomb"){
+      const affected=[];
+      for(let dr=-1; dr<=1; dr++){
+        for(let dc=-1; dc<=1; dc++){
+          const rr=r+dr, cc=c+dc;
+          if(rr>=0&&cc>=0&&rr<SIZE&&cc<SIZE && board[rr][cc]){
+            affected.push([rr,cc]);
+          }
+        }
+      }
+      if(affected.length === 0){ S.invalid(); return; }
+      undoSnap = snapshot();
+      Storage.data.boosters.bomb--;
+      activeBooster = null;
+      affected.forEach(([rr,cc])=>{
+        cellEls[rr][cc].classList.add("clearing");
+      });
+      spawnParticles(affected);
+      S.booster(); S.fanfare();
+      vibrate([20,30,40]);
+      shake();
+      renderBoosters();
+      setTimeout(()=>{
+        affected.forEach(([rr,cc])=>{
+          board[rr][cc] = null;
+          cellEls[rr][cc].classList.remove("clearing");
+        });
+        renderBoard();
+        saveRun();
+      }, 340);
+    }
+  }
+
+  /* ============================================================
+   *  MODES
+   * ============================================================ */
+  const MODES = {
+    classic: {
+      name: "클래식",
+      icon: "♾️",
+      desc: "끝없이 도전 - 한 칸도 못 놓을 때까지",
+      init(){
+        modeState = {};
+      },
+      checkWin(){ return false; }
+    },
+    challenge: {
+      name: "챌린지",
+      icon: "🎯",
+      desc: "목표 점수 달성하기",
+      init(){
+        const level = Storage.data.level || 1;
+        modeState = {
+          target: 500 + (level-1)*250,
+          level: level
+        };
+      },
+      checkWin(){
+        if(score >= modeState.target){
+          gameOver = true;
+          Storage.data.level = (Storage.data.level||1) + 1;
+          const reward = 50 + Storage.data.level*10;
+          Storage.data.coins += reward;
+          showOverlay("승리!", "다음 레벨이 열렸어요!", "+"+reward+" 🪙 보상");
+          return true;
+        }
+        return false;
+      }
+    },
+    timeattack: {
+      name: "타임어택",
+      icon: "⏱️",
+      desc: "60초 안에 최대 점수",
+      init(){
+        modeState = {
+          duration: 60,
+          timeLeft: 60,
+          interval: null,
+          lastTick: performance.now(),
+        };
+        timerBarEl.classList.add("active");
+        timerFillEl.style.width = "100%";
+        modeState.interval = setInterval(()=>{
+          if(paused || gameOver) return;
+          const now = performance.now();
+          const dt = (now - modeState.lastTick)/1000;
+          modeState.lastTick = now;
+          modeState.timeLeft -= dt;
+          timerFillEl.style.width = Math.max(0, modeState.timeLeft/modeState.duration*100)+"%";
+          if(modeState.timeLeft <= 0){
+            modeState.timeLeft = 0;
+            clearInterval(modeState.interval);
+            endGame();
+          }
+          renderObjective();
+        }, 100);
+      },
+      cleanup(){
+        if(modeState.interval) clearInterval(modeState.interval);
+        timerBarEl.classList.remove("active");
+      },
+      checkWin(){ return false; }
+    },
+    daily: {
+      name: "데일리 퍼즐",
+      icon: "📅",
+      desc: "오늘의 도전 - 모든 플레이어가 같은 시드",
+      init(){
+        const seed = dailySeed();
+        modeState = { seed };
+        // override randPiece with seeded variant
+      },
+      checkWin(){ return false; }
+    },
+  };
+
+  // Mulberry32 seeded RNG factory
+  function makeSeededRng(seed){
+    let s = seed >>> 0;
+    return function(){
+      s |= 0; s = s + 0x6D2B79F5 | 0;
+      let t = Math.imul(s ^ s >>> 15, 1 | s);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function dailySeed(){
+    const d = new Date();
+    return d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate();
+  }
+
+  function startMode(m){
+    if(MODES[mode] && MODES[mode].cleanup) MODES[mode].cleanup();
+    mode = m;
+    modeNameEl.textContent = MODES[m].name;
+    rng = (m === "daily") ? makeSeededRng(dailySeed()) : Math.random;
+    newGame();
+    MODES[m].init();
+    renderObjective();
+  }
+
+  function checkModeWin(){
+    return MODES[mode].checkWin();
+  }
+
+  /* ============================================================
+   *  GAME OVER
+   * ============================================================ */
   function endGame(){
     gameOver=true;
     S.gameover();
-    document.getElementById("finalScore").textContent=score;
-    document.getElementById("finalBest").textContent="최고 점수 "+best;
+    Storage.data.stats.gamesPlayed++;
+    // award coins based on score
+    const coinReward = Math.floor(score/100);
+    if(coinReward > 0) Storage.data.coins += coinReward;
+    if(MODES[mode].cleanup) MODES[mode].cleanup();
+    showOverlay("게임 오버", "더 놓을 곳이 없어요!", coinReward>0 ? ("+"+coinReward+" 🪙") : "");
+    checkAchievements();
+    Storage.data.savedRun = null;
+    Storage.save();
+  }
+
+  function showOverlay(title, sub, reward){
+    document.getElementById("goverTitle").textContent = title;
+    document.getElementById("goverSub").textContent = sub;
+    document.getElementById("finalScore").textContent = score;
+    document.getElementById("finalBest").textContent = "최고 점수 "+Storage.data.best;
+    document.getElementById("rewardBox").textContent = reward || "";
     overlayEl.classList.add("show");
-    saveState(); // 게임 오버 시 저장 기록 초기화
   }
 
-  /* ---------- init / restore state ---------- */
-  function initGame(){
-    const savedState = localStorage.getItem("woodblock_state");
-    if(savedState) {
-      try {
-        const parsed = JSON.parse(savedState);
-        board = parsed.board;
-        pieces = parsed.pieces;
-        score = parsed.score;
-        combo = parsed.combo;
-        gameOver = false;
-        overlayEl.classList.remove("show");
-        renderBoard();
-        renderTray();
-        updateHud();
-        return;
-      } catch(e) {
-        console.error("Failed to load state", e);
-      }
+  /* ============================================================
+   *  PERSIST RUN
+   * ============================================================ */
+  function saveRun(){
+    if(gameOver || mode === "timeattack"){
+      Storage.data.savedRun = null;
+    }else if(mode === "classic" || mode === "daily" || mode === "challenge"){
+      Storage.data.savedRun = {
+        mode, board, pieces, score, combo, modeState: {target: modeState.target, level: modeState.level}
+      };
     }
-    newGame();
+    Storage.save();
   }
 
+  function loadRun(){
+    const s = Storage.data.savedRun;
+    if(!s) return false;
+    if(!MODES[s.mode]) return false;
+    mode = s.mode;
+    board = s.board;
+    pieces = s.pieces;
+    score = s.score;
+    combo = s.combo;
+    gameOver = false;
+    if(s.modeState) modeState = Object.assign({}, modeState, s.modeState);
+    modeNameEl.textContent = MODES[mode].name;
+    rng = (mode === "daily") ? makeSeededRng(dailySeed()) : Math.random;
+    overlayEl.classList.remove("show");
+    renderBoard();
+    renderTray();
+    updateHud();
+    renderObjective();
+    return true;
+  }
+
+  /* ============================================================
+   *  NEW GAME
+   * ============================================================ */
   function newGame(){
     board=Array.from({length:SIZE},()=>Array(SIZE).fill(null));
     score=0; combo=0; gameOver=false;
+    undoSnap=null;
+    activeBooster=null;
+    if(MODES[mode] && MODES[mode].cleanup) MODES[mode].cleanup();
     overlayEl.classList.remove("show");
+    timerBarEl.classList.remove("active");
     renderBoard();
     newPieces();
     updateHud();
-    saveState();
+    saveRun();
   }
 
-  /* ---------- buttons ---------- */
+  /* ============================================================
+   *  TUTORIAL
+   * ============================================================ */
+  const tutSteps = [
+    { title:"환영합니다!", body:"우드 블록 퀘스트에 오신 것을 환영합니다. 트레이의 블록을 드래그해서 보드에 놓아보세요." },
+    { title:"줄을 채우세요", body:"가로 또는 세로 한 줄을 가득 채우면 사라지며 점수를 얻습니다. 콤보를 노려보세요!" },
+    { title:"특수 능력", body:"같은 색으로 줄을 채우면 보너스! 🌈 무지개 블록은 가로/세로를 모두 지웁니다. ⭐ 황금 블록은 추가 점수." },
+    { title:"부스터 활용", body:"코인으로 부스터를 사용하세요. 🔨 망치는 단일 블록 제거, 💣 폭탄은 3x3 제거, 💡 힌트는 배치 위치 표시!" },
+  ];
+  let tutIdx = 0;
+  function showTutorial(){
+    tutIdx = 0;
+    updateTut();
+    document.getElementById("tutOverlay").classList.add("show");
+  }
+  function updateTut(){
+    const s = tutSteps[tutIdx];
+    document.getElementById("tutStep").textContent = (tutIdx+1)+" / "+tutSteps.length;
+    document.getElementById("tutTitle").textContent = s.title;
+    document.getElementById("tutBody").textContent = s.body;
+    document.getElementById("tutNext").textContent = (tutIdx === tutSteps.length-1) ? "시작하기" : "다음";
+  }
+
+  /* ============================================================
+   *  STATS UI
+   * ============================================================ */
+  /* ============================================================
+   *  SHOP
+   * ============================================================ */
+  const SHOP_ITEMS = [
+    { id:"hammer",  icon:"🔨", name:"망치", price:30 },
+    { id:"bomb",    icon:"💣", name:"폭탄", price:60 },
+    { id:"refresh", icon:"🔄", name:"교체", price:40 },
+    { id:"undo",    icon:"↩️", name:"되돌리기", price:25 },
+    { id:"hint",    icon:"💡", name:"힌트", price:15 },
+  ];
+  function renderShop(){
+    const grid = document.getElementById("shopGrid");
+    grid.innerHTML = SHOP_ITEMS.map(it=>{
+      const owned = Storage.data.boosters[it.id] || 0;
+      const afford = Storage.data.coins >= it.price;
+      return `<div class="shop-cell ${afford?"":"cant-afford"}" data-shop="${it.id}">
+        <div class="icon">${it.icon}</div>
+        <div class="nm">${it.name}</div>
+        <div class="qty">보유 ${owned}</div>
+        <div class="price">${it.price} 🪙</div>
+      </div>`;
+    }).join("");
+    grid.querySelectorAll("[data-shop]").forEach(el=>{
+      el.addEventListener("click", ()=>{
+        const id = el.dataset.shop;
+        const item = SHOP_ITEMS.find(i=>i.id===id);
+        if(Storage.data.coins < item.price){ S.invalid(); return; }
+        Storage.data.coins -= item.price;
+        Storage.data.boosters[id] = (Storage.data.boosters[id]||0) + 1;
+        Storage.save();
+        S.coin();
+        renderShop();
+        updateHud();
+      });
+    });
+  }
+
+  function renderStats(){
+    const s = Storage.data.stats;
+    const html = `
+      <div class="stat-cell"><div class="lbl">PLAYS</div><div class="val">${s.gamesPlayed}</div></div>
+      <div class="stat-cell"><div class="lbl">BEST</div><div class="val">${Storage.data.best}</div></div>
+      <div class="stat-cell"><div class="lbl">TOTAL SCORE</div><div class="val">${s.totalScore}</div></div>
+      <div class="stat-cell"><div class="lbl">TOTAL LINES</div><div class="val">${s.totalLines}</div></div>
+      <div class="stat-cell"><div class="lbl">MAX COMBO</div><div class="val">${s.maxCombo}</div></div>
+      <div class="stat-cell"><div class="lbl">BLOCKS PLACED</div><div class="val">${s.totalBlocks}</div></div>
+      <div class="stat-cell"><div class="lbl">COINS</div><div class="val">${Storage.data.coins}</div></div>
+      <div class="stat-cell"><div class="lbl">LEVEL</div><div class="val">${Storage.data.level||1}</div></div>
+    `;
+    document.getElementById("statsGrid").innerHTML = html;
+  }
+
+  function renderAchievements(){
+    const list = document.getElementById("achList");
+    const d = Storage.data;
+    let done=0;
+    list.innerHTML = ACHIEVEMENTS.map(a=>{
+      const isDone = !!d.achievements[a.id];
+      if(isDone) done++;
+      return `<div class="ach-row ${isDone?"done":""}">
+        <div class="ach-icon">${a.icon}</div>
+        <div class="ach-info"><div class="nm">${a.name}</div><div class="ds">${a.desc} · ${a.reward} 🪙 ${isDone?"✓":""}</div></div>
+      </div>`;
+    }).join("");
+    document.getElementById("achSub").textContent = done + " / " + ACHIEVEMENTS.length + " 완료";
+  }
+
+  /* ============================================================
+   *  DAILY REWARD
+   * ============================================================ */
+  function pad2(n){ return (n<10?"0":"")+n; }
+  function dayKey(){
+    const d = new Date();
+    return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());
+  }
+  function dayDiff(a, b){
+    // a, b are YYYY-MM-DD strings; returns whole days between (UTC-safe)
+    const pa = a.split("-").map(Number);
+    const pb = b.split("-").map(Number);
+    const ta = Date.UTC(pa[0], pa[1]-1, pa[2]);
+    const tb = Date.UTC(pb[0], pb[1]-1, pb[2]);
+    return Math.round((tb-ta)/(1000*60*60*24));
+  }
+  function canClaimDaily(){
+    return Storage.data.dailyLastClaim !== dayKey();
+  }
+  function renderDaily(){
+    const rewards = [10, 20, 30, 50, 75, 100, 200];
+    const row = document.getElementById("streakRow");
+    let displayStreak = Storage.data.dailyStreak;
+    // If gap of >1 day, treat as reset visually
+    if(Storage.data.dailyLastClaim){
+      const diff = dayDiff(Storage.data.dailyLastClaim, dayKey());
+      if(diff > 1){
+        displayStreak = 0;
+      }
+    }
+    // Display position within a 7-day cycle (loops past 7)
+    const cyclePos = displayStreak % rewards.length;
+    row.innerHTML = rewards.map((r,i)=>{
+      const day = i+1;
+      const isClaimed = i < cyclePos;
+      const isToday = (i === cyclePos) && canClaimDaily();
+      return `<div class="streak-day ${isClaimed?"claimed":""} ${isToday?"today":""}">
+        <div class="d">${day}일</div>
+        <div class="r">${r}🪙</div>
+      </div>`;
+    }).join("");
+    const sub = document.getElementById("dailySub");
+    const claim = document.getElementById("claimBtn");
+    if(canClaimDaily()){
+      sub.textContent = "오늘의 보상을 받으세요!";
+      claim.style.display = "";
+      claim.disabled = false;
+    }else{
+      sub.textContent = "내일 다시 오세요!";
+      claim.style.display = "none";
+    }
+  }
+  function claimDaily(){
+    if(!canClaimDaily()) return;
+    let streak = Storage.data.dailyStreak;
+    if(Storage.data.dailyLastClaim){
+      const diff = dayDiff(Storage.data.dailyLastClaim, dayKey());
+      if(diff > 1) streak = 0;
+    }
+    streak++;
+    const rewards = [10, 20, 30, 50, 75, 100, 200];
+    // Cycle through the 7-reward table indefinitely
+    const idx = ((streak-1) % rewards.length + rewards.length) % rewards.length;
+    const reward = rewards[idx];
+    Storage.data.coins += reward;
+    Storage.data.dailyStreak = streak;
+    Storage.data.dailyLastClaim = dayKey();
+    Storage.save();
+    showToast("🎁","일일 보상","+"+reward+" 🪙 ("+streak+"일 연속)");
+    renderDaily();
+    updateHud();
+    checkAchievements();
+  }
+  function checkDailyAlert(){
+    const btn = document.getElementById("dailyBtn");
+    if(canClaimDaily()) btn.classList.add("alert");
+    else btn.classList.remove("alert");
+  }
+
+  /* ============================================================
+   *  MAIN MENU
+   * ============================================================ */
+  function renderMenu(){
+    const list = document.getElementById("modeList");
+    list.innerHTML = "";
+    // Resume option if a saved run exists
+    if(Storage.data.savedRun){
+      const m = MODES[Storage.data.savedRun.mode];
+      if(m){
+        const btn = document.createElement("button");
+        btn.className = "menu-mode";
+        btn.innerHTML = `
+          <div class="mode-icon">▶️</div>
+          <div>
+            <div class="mode-name">이어하기</div>
+            <div class="mode-desc">${m.name} · 점수 ${Storage.data.savedRun.score}</div>
+          </div>
+          <div class="badge">RESUME</div>
+        `;
+        btn.addEventListener("click", ()=>{
+          audio(); S.click();
+          menuEl.classList.remove("show");
+          paused = false;
+          loadRun();
+        });
+        list.appendChild(btn);
+      }
+    }
+    Object.keys(MODES).forEach(k=>{
+      const m = MODES[k];
+      const btn = document.createElement("button");
+      btn.className = "menu-mode";
+      let badge = "";
+      if(k === "challenge"){
+        badge = '<div class="badge">LV '+(Storage.data.level||1)+'</div>';
+      }else if(k === "daily"){
+        if(canClaimDaily()) badge = '<div class="badge">NEW</div>';
+      }
+      btn.innerHTML = `
+        <div class="mode-icon">${m.icon}</div>
+        <div>
+          <div class="mode-name">${m.name}</div>
+          <div class="mode-desc">${m.desc}</div>
+        </div>
+        ${badge}
+      `;
+      btn.addEventListener("click", ()=>{
+        audio(); S.click();
+        menuEl.classList.remove("show");
+        paused = false;
+        Storage.data.savedRun = null;
+        startMode(k);
+      });
+      list.appendChild(btn);
+    });
+  }
+  function openMenu(){
+    paused = true;
+    renderMenu();
+    menuEl.classList.add("show");
+  }
+  function closeMenu(){
+    paused = false;
+    menuEl.classList.remove("show");
+  }
+
+  /* ============================================================
+   *  SETTINGS
+   * ============================================================ */
+  function applyTheme(){
+    document.body.className = "theme-"+Storage.data.settings.theme;
+    document.querySelectorAll(".theme-chip").forEach(c=>{
+      c.classList.toggle("selected", c.dataset.theme === Storage.data.settings.theme);
+    });
+  }
+  function refreshSettingsUI(){
+    document.getElementById("sfxToggle").classList.toggle("on", Storage.data.settings.sfx);
+    document.getElementById("bgmToggle").classList.toggle("on", Storage.data.settings.bgm);
+    document.getElementById("vibToggle").classList.toggle("on", Storage.data.settings.vibration);
+    applyTheme();
+  }
+
+  /* ============================================================
+   *  BUTTONS
+   * ============================================================ */
   document.getElementById("newBtn").addEventListener("click",()=>{
     audio(); S.click(); newGame();
   });
   document.getElementById("restartBtn").addEventListener("click",()=>{
     audio(); S.click(); newGame();
   });
-  document.getElementById("muteBtn").addEventListener("click",function(){
-    muted=!muted;
-    this.innerHTML = muted ? "&#128263;" : "&#128266;";
-    if(!muted){ audio(); S.click(); }
+  document.getElementById("toMenuBtn").addEventListener("click",()=>{
+    audio(); S.click();
+    overlayEl.classList.remove("show");
+    openMenu();
   });
+  document.getElementById("menuBtn").addEventListener("click",()=>{
+    audio(); S.click();
+    if(!gameOver){
+      // pause first
+      paused = true;
+      pauseEl.classList.add("show");
+    }else{
+      openMenu();
+    }
+  });
+  document.getElementById("resumeBtn").addEventListener("click",()=>{
+    S.click();
+    paused = false;
+    pauseEl.classList.remove("show");
+    if(mode === "timeattack") modeState.lastTick = performance.now();
+  });
+  document.getElementById("quitBtn").addEventListener("click",()=>{
+    S.click();
+    pauseEl.classList.remove("show");
+    openMenu();
+  });
+  document.getElementById("shopBtn").addEventListener("click",()=>{
+    S.click(); renderShop();
+    document.getElementById("shopOverlay").classList.add("show");
+  });
+  document.getElementById("statsBtn").addEventListener("click",()=>{
+    S.click(); renderStats();
+    document.getElementById("statsOverlay").classList.add("show");
+  });
+  document.getElementById("achBtn").addEventListener("click",()=>{
+    S.click(); renderAchievements();
+    document.getElementById("achOverlay").classList.add("show");
+  });
+  document.getElementById("dailyBtn").addEventListener("click",()=>{
+    S.click(); renderDaily();
+    document.getElementById("dailyOverlay").classList.add("show");
+  });
+  document.getElementById("settingsBtn").addEventListener("click",()=>{
+    S.click(); refreshSettingsUI();
+    document.getElementById("settingsOverlay").classList.add("show");
+  });
+  document.getElementById("howtoBtn").addEventListener("click",()=>{
+    S.click(); showTutorial();
+  });
+  document.getElementById("claimBtn").addEventListener("click",()=>{
+    audio(); claimDaily();
+    checkDailyAlert();
+  });
+
+  document.querySelectorAll("[data-close]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      S.click();
+      document.getElementById(btn.dataset.close).classList.remove("show");
+    });
+  });
+
+  document.getElementById("sfxToggle").addEventListener("click",()=>{
+    Storage.data.settings.sfx = !Storage.data.settings.sfx;
+    Storage.save();
+    refreshSettingsUI();
+    if(Storage.data.settings.sfx){ audio(); S.click(); }
+  });
+  document.getElementById("bgmToggle").addEventListener("click",()=>{
+    Storage.data.settings.bgm = !Storage.data.settings.bgm;
+    Storage.save();
+    refreshSettingsUI();
+    if(Storage.data.settings.bgm) startBGM();
+    else stopBGM();
+  });
+  document.getElementById("vibToggle").addEventListener("click",()=>{
+    Storage.data.settings.vibration = !Storage.data.settings.vibration;
+    Storage.save();
+    refreshSettingsUI();
+    if(Storage.data.settings.vibration) vibrate(30);
+  });
+  document.querySelectorAll(".theme-chip").forEach(c=>{
+    c.addEventListener("click",()=>{
+      Storage.data.settings.theme = c.dataset.theme;
+      Storage.save();
+      applyTheme();
+      S.click();
+    });
+  });
+  document.getElementById("resetBtn").addEventListener("click",()=>{
+    if(confirm("모든 데이터를 초기화할까요? (점수, 코인, 도전과제 등)")){
+      Storage.reset();
+      location.reload();
+    }
+  });
+
+  function finishTutorial(){
+    Storage.data.tutorialDone = true;
+    Storage.save();
+    document.getElementById("tutOverlay").classList.remove("show");
+    // If no active game, open the menu so user can pick a mode
+    if(pieces.every(p=>!p)) openMenu();
+  }
+  document.getElementById("tutNext").addEventListener("click",()=>{
+    S.click();
+    if(tutIdx === tutSteps.length-1){
+      finishTutorial();
+    }else{
+      tutIdx++;
+      updateTut();
+    }
+  });
+  document.getElementById("tutSkip").addEventListener("click",()=>{
+    S.click();
+    finishTutorial();
+  });
+
   window.addEventListener("resize",resize);
   window.addEventListener("blur",()=>{ if(dragData||pending) endGesture(); });
 
-  /* ---------- boot ---------- */
-  best=parseInt(localStorage.getItem("woodblock_best")||"0",10);
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden){
+      if(dragData||pending) endGesture();
+    }
+  });
+
+  /* ============================================================
+   *  BOOT
+   * ============================================================ */
+  Storage.load();
+  applyTheme();
   buildBoard();
+  setupBoosters();
   resize();
-  initGame(); // 저장된 상태 로드 또는 새 게임
+  checkDailyAlert();
+
+  // Boot: try to load saved run; otherwise show menu (and tutorial on first run)
+  function bootInitialBoard(){
+    // Initialize an empty board+pieces so the background renders before mode pick.
+    board=Array.from({length:SIZE},()=>Array(SIZE).fill(null));
+    pieces=[null,null,null];
+    score=0; combo=0; gameOver=false;
+    renderBoard();
+    renderTray();
+    updateHud();
+  }
+
+  if(loadRun()){
+    if(mode === "timeattack"){
+      // timer not safely resumable; restart the mode
+      Storage.data.savedRun = null;
+      bootInitialBoard();
+      openMenu();
+    }
+    // else: saved run is now active
+  }else{
+    bootInitialBoard();
+    if(!Storage.data.tutorialDone){
+      showTutorial();
+    }else{
+      openMenu();
+    }
+  }
 })();
 </script>
 </body>
