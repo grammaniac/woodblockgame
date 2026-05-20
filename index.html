@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
+<!-- 뷰포트 설정: 줌 방지 메타 태그 유지 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>우드 블록 퍼즐</title>
 <style>
@@ -22,10 +23,14 @@
     display:flex; flex-direction:column; align-items:center;
     min-height:100%;
     padding:14px 10px 24px;
-    /* 모바일 스크롤 및 터치 제어(당겨서 새로고침 등) 완전 차단 */
+    
+    /* 모바일 스크롤 제어 및 텍스트 선택 방지 */
     overflow:hidden; 
     user-select:none; -webkit-user-select:none;
-    touch-action:none; 
+    
+    /* [수정됨] 전체 화면의 더블 탭 줌 방지 및 바운스 스크롤 방지 */
+    touch-action: manipulation; 
+    overscroll-behavior: none;
   }
 
   /* ---------- header ---------- */
@@ -97,6 +102,8 @@
       linear-gradient(160deg,#5a3c22,#3d2814);
     border-radius:10px;
     box-shadow:inset 0 3px 10px rgba(0,0,0,.6);
+    /* [수정됨] 드래그가 일어나는 보드는 브라우저 기본 터치 동작을 완전히 막음 */
+    touch-action: none;
   }
   .cell{ position:relative; width:var(--cell); height:var(--cell); }
   /* recessed empty hole */
@@ -160,6 +167,8 @@
     margin-top:16px;
     display:grid; grid-template-columns:repeat(3,1fr);
     gap:8px;
+    /* [수정됨] 트레이 영역도 드래그가 시작되므로 브라우저 동작 막음 */
+    touch-action: none;
   }
   .slot{
     height:calc(var(--traycell) * 4.4);
@@ -311,6 +320,12 @@
 
 <script>
 "use strict";
+
+// [추가됨] iOS Safari 등에서 더블 탭 확대 이벤트를 강제로 무력화하는 방어 코드
+document.addEventListener('dblclick', function(event) {
+  event.preventDefault();
+}, { passive: false });
+
 (function(){
   const SIZE = 8;
   const SNAP_RADIUS = 1;   // 배치 보정 범위(칸). 더 너그럽게 하려면 2
