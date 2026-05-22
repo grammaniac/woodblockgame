@@ -84,6 +84,8 @@
     overscroll-behavior: none;
     transition: background .4s ease;
   }
+  /* 전체 화면 모드: 콘텐츠를 세로 가운데로 정렬 */
+  body.fs-active{ justify-content:center; }
 
   /* ---------- header ---------- */
   .topbar{
@@ -683,6 +685,7 @@
     <div class="title">우드 블록 퀘스트<small>BLOCK QUEST</small></div>
     <div class="btnrow">
       <div class="coinbox"><span class="icon">🪙</span><span id="coinCount">0</span></div>
+      <button class="iconbtn" id="fsBtn" aria-label="전체 화면" title="전체 화면">⛶</button>
       <button class="iconbtn" id="newBtn" aria-label="새 게임" title="새 게임">&#8635;</button>
     </div>
   </div>
@@ -1050,6 +1053,12 @@ document.addEventListener('dblclick', function(event) {
   const objectiveEl = document.getElementById("objective");
   const timerBarEl  = document.getElementById("timerbar");
   const timerFillEl = document.getElementById("timerFill");
+  const topbarEl     = document.querySelector(".topbar");
+  const modebarEl    = document.querySelector(".modebar");
+  const scorewrapEl  = document.querySelector(".scorewrap");
+  const boosterbarEl = document.getElementById("boosterbar");
+  const hintEl       = document.querySelector(".hint");
+  const fsBtn        = document.getElementById("fsBtn");
 
   /* ============================================================
    *  SOUND (Web Audio)
@@ -1204,14 +1213,33 @@ document.addEventListener('dblclick', function(event) {
     }
   }
 
+  // frame(8*cell + 패딩28 + 테두리6) + tray(마진14) 의 셀과 무관한 고정 높이.
+  const BOARD_FIXED_PX = 48;
+  // 셀에 비례하는 높이 배수: board 8칸 + tray 높이비(≈2.64).
+  const CELL_HEIGHT_FACTOR = 10.64;
+
   function resize(){
     if(dragData || pending) endGesture();
-    const maxW = Math.min(window.innerWidth-26, 460);
-    const maxH = window.innerHeight*0.50;
-    let cell = Math.floor(Math.min(maxW, maxH)/SIZE);
-    cell = Math.max(28, Math.min(cell, 56));
-    document.documentElement.style.setProperty("--cell", cell+"px");
-    document.documentElement.style.setProperty("--traycell", Math.round(cell*0.60)+"px");
+
+    // 보드/트레이를 제외한 고정 UI(헤더·점수판 등)의 실제 높이를 측정해
+    // 남는 세로 공간에 보드를 맞춘다. 마진은 CSS에서 직접 읽어 값 드리프트를 막는다.
+    const bs = getComputedStyle(document.body);
+    let chrome = parseFloat(bs.paddingTop) + parseFloat(bs.paddingBottom);
+    const chromeEls = [topbarEl, modebarEl, scorewrapEl, boosterbarEl, hintEl];
+    if(timerBarEl.classList.contains("active")) chromeEls.push(timerBarEl);
+    for(const el of chromeEls){
+      const cs = getComputedStyle(el);
+      chrome += el.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom);
+    }
+
+    const maxCellH = (window.innerHeight - chrome - BOARD_FIXED_PX) / CELL_HEIGHT_FACTOR;
+    const maxCellW = Math.min(window.innerWidth - 26, 460) / SIZE;
+
+    let cell = Math.floor(Math.min(maxCellW, maxCellH));
+    cell = Math.max(20, Math.min(cell, 56));
+    const rootStyle = document.documentElement.style;
+    rootStyle.setProperty("--cell", cell + "px");
+    rootStyle.setProperty("--traycell", Math.round(cell * 0.60) + "px");
     renderTray();
   }
 
@@ -2537,6 +2565,50 @@ document.addEventListener('dblclick', function(event) {
     S.click();
     finishTutorial();
   });
+
+  /* ============================================================
+   *  전체 화면 토글
+   * ============================================================ */
+  (function setupFullscreen(){
+    const root = document.documentElement;
+    const enterFs = root.requestFullscreen || root.webkitRequestFullscreen
+      || root.mozRequestFullScreen || root.msRequestFullscreen;
+    const exitFs = document.exitFullscreen || document.webkitExitFullscreen
+      || document.mozCancelFullScreen || document.msExitFullscreen;
+    // iPhone 은 모든 브라우저(WebKit 기반)에서 전체 화면 API 를 지원하지 않는다.
+    const fsSupported = !!enterFs;
+
+    const isFs = ()=> !!(document.fullscreenElement || document.webkitFullscreenElement
+      || document.mozFullScreenElement || document.msFullscreenElement);
+
+    fsBtn.addEventListener("click", ()=>{
+      audio(); S.click();
+      if(!fsSupported){
+        showToast("📱", "전체 화면 미지원",
+          "아이폰에서는 전체 화면을 쓸 수 없어요. 아이패드나 데스크탑에서 이용해 주세요.");
+        return;
+      }
+      const onFail = err => console.warn("전체 화면 전환 실패:", err && err.message);
+      if(!isFs()){
+        try{
+          Promise.resolve(enterFs.call(root)).catch(onFail);
+        }catch(err){
+          onFail(err);
+        }
+      }else if(exitFs){
+        exitFs.call(document);
+      }
+    });
+
+    const onFsChange = ()=>{
+      const fs = isFs();
+      fsBtn.innerHTML = fs ? "🗗" : "⛶";
+      document.body.classList.toggle("fs-active", fs);
+      resize();
+    };
+    ["fullscreenchange","webkitfullscreenchange","mozfullscreenchange","MSFullscreenChange"]
+      .forEach(ev=> document.addEventListener(ev, onFsChange));
+  })();
 
   window.addEventListener("resize",resize);
   window.addEventListener("blur",()=>{ if(dragData||pending) endGesture(); });
