@@ -84,8 +84,6 @@
     overscroll-behavior: none;
     transition: background .4s ease;
   }
-  /* 전체 화면 모드: 콘텐츠를 세로 가운데로 정렬 */
-  body.fs-active{ justify-content:center; }
 
   /* ---------- header ---------- */
   .topbar{
@@ -1221,10 +1219,15 @@ document.addEventListener('dblclick', function(event) {
   function resize(){
     if(dragData || pending) endGesture();
 
+    // 인라인 padding-top 을 비워 순수 CSS 기준값(safe-area 포함)부터 다시 측정한다.
+    document.body.style.paddingTop = "";
+
     // 보드/트레이를 제외한 고정 UI(헤더·점수판 등)의 실제 높이를 측정해
     // 남는 세로 공간에 보드를 맞춘다. 마진은 CSS에서 직접 읽어 값 드리프트를 막는다.
     const bs = getComputedStyle(document.body);
-    let chrome = parseFloat(bs.paddingTop) + parseFloat(bs.paddingBottom);
+    const basePadTop = parseFloat(bs.paddingTop);
+    const basePadBottom = parseFloat(bs.paddingBottom);
+    let chrome = basePadTop + basePadBottom;
     const chromeEls = [topbarEl, modebarEl, scorewrapEl, boosterbarEl, hintEl];
     if(timerBarEl.classList.contains("active")) chromeEls.push(timerBarEl);
     for(const el of chromeEls){
@@ -1241,6 +1244,16 @@ document.addEventListener('dblclick', function(event) {
     rootStyle.setProperty("--cell", cell + "px");
     rootStyle.setProperty("--traycell", Math.round(cell * 0.60) + "px");
     renderTray();
+
+    // 전체 화면: 위쪽 여백을 한 번만 계산해 콘텐츠를 세로 가운데에 고정한다.
+    // justify-content:center 는 블록 배치 중 생기는 미세한 reflow 마다 중앙을
+    // 다시 계산해 화면이 위아래로 흔들리므로, 고정 padding 으로 상단을 못박는다.
+    if(document.body.classList.contains("fs-active")){
+      const uiBoardH = (chrome - basePadTop - basePadBottom)
+        + CELL_HEIGHT_FACTOR * cell + BOARD_FIXED_PX;
+      const padTop = Math.max(basePadTop, (window.innerHeight - uiBoardH) / 2);
+      document.body.style.paddingTop = padTop + "px";
+    }
   }
 
   function renderBoard(){
