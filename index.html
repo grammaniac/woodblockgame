@@ -1,10 +1,14 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <meta name="theme-color" content="#1c1208" />
+<!-- iOS 홈 화면에서 실행 시 Safari UI 없이 독립 앱처럼 띄우기 위한 메타. -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="블록 퀘스트" />
 <title>우드 블록 퀘스트</title>
 <style>
   :root{
@@ -601,6 +605,41 @@
   .ach-info .ds{ font-size:11px; color:var(--text-sub); }
   .ach-row.done .ach-info .ds{ color: var(--gold); }
 
+  /* A2HS (홈 화면에 추가) 안내 단계 */
+  .a2hs-steps{
+    display:flex; flex-direction:column; gap:8px;
+    margin:14px 0;
+    text-align:left;
+  }
+  .a2hs-step{
+    display:flex; align-items:flex-start; gap:10px;
+    padding:10px 12px;
+    background:linear-gradient(160deg, rgba(0,0,0,.25), rgba(0,0,0,.45));
+    border-radius:12px;
+  }
+  .a2hs-num{
+    flex-shrink:0;
+    width:26px; height:26px; border-radius:50%;
+    background:linear-gradient(160deg, var(--gold), #c08020);
+    color:#3a2510;
+    font-weight:900; font-size:13px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+  .a2hs-body{ flex:1; min-width:0; }
+  .a2hs-body .a2hs-title{ font-size:13px; font-weight:800; color:var(--text-accent); }
+  .a2hs-body .a2hs-desc{ font-size:11px; color:var(--text-main); margin-top:3px; line-height:1.5; }
+  .a2hs-body .a2hs-desc small{ color:var(--text-sub); }
+  .a2hs-icon{ font-size:14px; vertical-align:-1px; }
+  .a2hs-note{
+    font-size:11px; color:var(--text-sub);
+    background:rgba(0,0,0,.25); border-radius:8px;
+    padding:8px 10px; margin:0 0 12px;
+    display:none;
+  }
+  .a2hs-note.show{ display:block; }
+  .a2hs-note b{ color:var(--text-accent); }
+
   /* tutorial */
   .tut-overlay{
     position:fixed; inset:0; z-index:90;
@@ -830,6 +869,41 @@
       </div>
       <button class="bigbtn" data-close="settingsOverlay">완료</button>
       <button class="bigbtn secondary" id="resetBtn" style="font-size:11px; padding: 8px 12px;">데이터 초기화</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="a2hsOverlay">
+    <div class="modal">
+      <h2>홈 화면에 앱으로 추가 🏠</h2>
+      <div class="sub">전체 화면으로 끊김 없이 플레이하세요</div>
+      <div class="a2hs-steps">
+        <div class="a2hs-step">
+          <div class="a2hs-num">1</div>
+          <div class="a2hs-body">
+            <div class="a2hs-title">공유 버튼 누르기</div>
+            <div class="a2hs-desc">
+              Safari의 <span class="a2hs-icon">⬆️</span> 공유 버튼을 탭하세요.
+              <br><small id="a2hsLoc">(아이폰: 하단 / 아이패드: 상단 우측)</small>
+            </div>
+          </div>
+        </div>
+        <div class="a2hs-step">
+          <div class="a2hs-num">2</div>
+          <div class="a2hs-body">
+            <div class="a2hs-title">"홈 화면에 추가" 선택</div>
+            <div class="a2hs-desc">목록에서 <b>홈 화면에 추가</b>를 찾아 탭하세요.</div>
+          </div>
+        </div>
+        <div class="a2hs-step">
+          <div class="a2hs-num">3</div>
+          <div class="a2hs-body">
+            <div class="a2hs-title">홈 화면 아이콘으로 실행</div>
+            <div class="a2hs-desc">추가된 아이콘을 탭하면 전체 화면 앱처럼 실행돼요.</div>
+          </div>
+        </div>
+      </div>
+      <div class="a2hs-note" id="a2hsNote"></div>
+      <button class="bigbtn" data-close="a2hsOverlay">알겠어요</button>
     </div>
   </div>
 
@@ -2588,17 +2662,46 @@ document.addEventListener('dblclick', function(event) {
       || root.mozRequestFullScreen || root.msRequestFullscreen;
     const exitFs = document.exitFullscreen || document.webkitExitFullscreen
       || document.mozCancelFullScreen || document.msExitFullscreen;
-    // iPhone 은 모든 브라우저(WebKit 기반)에서 전체 화면 API 를 지원하지 않는다.
     const fsSupported = !!enterFs;
 
     const isFs = ()=> !!(document.fullscreenElement || document.webkitFullscreenElement
       || document.mozFullScreenElement || document.msFullscreenElement);
 
+    // iOS(iPhone/iPad/iPod) 식별. iPadOS 13+ 는 UA 가 Mac 으로 위장하므로 터치 여부로 구분.
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua)
+      || (/Mac/.test(ua) && 'ontouchend' in document);
+    // iOS 의 비-Safari 브라우저(Chrome=CriOS, Firefox=FxiOS, Edge=EdgiOS, Opera=OPiOS)는
+    // A2HS 메뉴가 없거나 다르므로 별도 안내가 필요하다.
+    const isIOSNonSafari = isIOS && /(CriOS|FxiOS|EdgiOS|OPiOS)/.test(ua);
+    // 이미 홈 화면 앱(standalone)으로 실행 중인지.
+    const isStandalone = window.navigator.standalone === true
+      || window.matchMedia('(display-mode: standalone)').matches;
+
+    function showA2HS(){
+      const note = document.getElementById("a2hsNote");
+      if(isIOSNonSafari){
+        note.innerHTML = '⚠️ 지금 브라우저에서는 "홈 화면에 추가"가 안 보일 수 있어요. <b>Safari</b>로 이 페이지를 열어 다시 시도해 주세요.';
+        note.classList.add("show");
+      }else{
+        note.classList.remove("show");
+      }
+      document.getElementById("a2hsOverlay").classList.add("show");
+    }
+
     fsBtn.addEventListener("click", ()=>{
       audio(); S.click();
+      if(isStandalone){
+        showToast("🏠", "앱 모드", "이미 홈 화면 앱으로 실행 중이에요!");
+        return;
+      }
+      if(isIOS){
+        // iOS 는 Fullscreen API 가 없거나 시스템이 강제 종료하므로 A2HS 를 안내한다.
+        showA2HS();
+        return;
+      }
       if(!fsSupported){
-        showToast("📱", "전체 화면 미지원",
-          "아이폰에서는 전체 화면을 쓸 수 없어요. 아이패드나 데스크탑에서 이용해 주세요.");
+        showToast("📱", "전체 화면 미지원", "이 브라우저에서는 전체 화면을 쓸 수 없어요.");
         return;
       }
       const onFail = err => console.warn("전체 화면 전환 실패:", err && err.message);
