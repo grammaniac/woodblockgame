@@ -9,6 +9,10 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="블록 퀘스트" />
+<meta name="description" content="나무 질감의 블록 퍼즐 게임. 조각을 회전하고 배치해 줄을 지우세요. 4가지 모드, 부스터, 도전과제. 오프라인에서도 플레이 가능." />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <title>우드 블록 퀘스트</title>
 <style>
   :root{
@@ -713,6 +717,58 @@
   }
   .streak-day .d{ font-weight:800; }
   .streak-day .r{ font-size:11px; font-weight:900; }
+  /* ---------- 배치 가능 여부 표시 ---------- */
+  .slot .piece{ transition: opacity .25s ease, filter .25s ease; }
+  .slot.dead .piece{ opacity:.32; filter:grayscale(.9) brightness(.8); }
+  .slot .rotbadge{
+    position:absolute; top:5px; right:7px;
+    font-size:13px; font-weight:800;
+    color:var(--text-accent);
+    text-shadow:0 1px 2px rgba(0,0,0,.8);
+    animation: rotbadge 1.1s ease infinite;
+    pointer-events:none;
+  }
+  @keyframes rotbadge{
+    0%,100%{ transform:rotate(0deg) scale(1); opacity:.75; }
+    50%{ transform:rotate(120deg) scale(1.15); opacity:1; }
+  }
+
+  /* ---------- 드래그 성능 ---------- */
+  .piece.floating{ will-change: left, top; }
+
+  /* ---------- 새 버전 업데이트 바 ---------- */
+  .updatebar{
+    position:fixed; left:50%; transform:translateX(-50%);
+    bottom: max(16px, env(safe-area-inset-bottom));
+    display:flex; align-items:center; gap:12px;
+    background:linear-gradient(160deg,var(--wood-light),var(--wood-dark));
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:14px;
+    padding:10px 14px;
+    box-shadow:0 6px 18px rgba(0,0,0,.55);
+    font-size:13px; font-weight:700; color:var(--text-main);
+    z-index:300;
+    animation: toastslide .3s ease;
+  }
+  @keyframes toastslide{ from{ transform:translate(-50%, 30px); opacity:0; } to{ transform:translate(-50%, 0); opacity:1; } }
+  .updatebar button{
+    border:none; border-radius:9px;
+    padding:7px 12px;
+    background:var(--gold); color:#3a2510;
+    font-weight:800; font-size:12px; cursor:pointer;
+    box-shadow:0 2px 0 rgba(0,0,0,.35);
+  }
+  .updatebar button:active{ transform:translateY(1px); }
+
+  /* ---------- 모션 최소화 설정 존중 ---------- */
+  @media (prefers-reduced-motion: reduce){
+    .frame.shake{ animation:none; }
+    .particle{ display:none; }
+    .blk.rainbow{ animation:none; }
+    .iconbtn.alert{ animation:none; }
+    .slot.tut-pulse{ animation:none; }
+    .slot .rotbadge{ animation:none; }
+  }
 </style>
 </head>
 <body>
@@ -988,6 +1044,7 @@ document.addEventListener('dblclick', function(event) {
    *  STORAGE
    * ============================================================ */
   const KEY = "wbq_v1";
+  const DATA_VERSION = 2;
   const Storage = {
     data: null,
     load(){
@@ -996,6 +1053,7 @@ document.addEventListener('dblclick', function(event) {
         if(raw){ this.data = JSON.parse(raw); }
       }catch(e){}
       if(!this.data) this.data = this.defaults();
+      this.migrate();
       // merge new defaults for forward-compat
       const d = this.defaults();
       for(const k in d){
@@ -1011,8 +1069,20 @@ document.addEventListener('dblclick', function(event) {
         if(this.data.settings[k] === undefined) this.data.settings[k] = d.settings[k];
       }
     },
+    // 업데이트해도 기존 기록(최고점수·코인·도전과제)이 날아가지 않도록
+    // 버전별 마이그레이션을 순차 적용한다.
+    migrate(){
+      const v = this.data.version || 1;
+      if(v < 2){
+        // v1 → v2: 구조 변화 없음. 버전 필드만 도입.
+      }
+      // 이후 버전 마이그레이션은 여기 추가:
+      // if(v < 3){ ... }
+      this.data.version = DATA_VERSION;
+    },
     defaults(){
       return {
+        version: DATA_VERSION,
         best: 0,
         coins: 100,
         xp: 0,
@@ -1387,6 +1457,17 @@ document.addEventListener('dblclick', function(event) {
       if(p){
         slot.appendChild(pieceEl(p.shape,p.color,cs));
         slot.addEventListener("pointerdown",e=>onSlotDown(e,idx));
+        // 배치 가능 여부 표시: 어떤 회전으로도 불가 → 흐리게,
+        // 지금은 안 되지만 회전하면 가능 → ↻ 배지로 회전 유도
+        const fitsNow = canPlaceAnywhere(p.shape);
+        const fitsRot = fitsNow || fitsAnyRotation(p);
+        slot.classList.toggle("dead", !fitsRot);
+        if(!fitsNow && fitsRot){
+          const b=document.createElement("div");
+          b.className="rotbadge";
+          b.textContent="↻";
+          slot.appendChild(b);
+        }
       }
       trayEl.appendChild(slot);
     });
@@ -1425,12 +1506,16 @@ document.addEventListener('dblclick', function(event) {
   }
 
   /* ============================================================
-   *  PIECE GEN with special chance
+   *  PIECE GEN — 가중치 + 생존 보장
+   *  - 보드가 찰수록 작은 조각 확률을 높이되(구원), 점수가 오를수록
+   *    구원 강도를 줄여 난이도 곡선을 만든다.
+   *  - 새 세트는 회전을 포함해 최소 1개는 반드시 배치 가능하도록 보장.
+   *  - 데일리 모드는 "모두 같은 시드" 공정성을 위해 보드 상태와 무관한
+   *    순수 시드 랜덤을 유지한다.
    * ============================================================ */
-  function randPiece(){
-    const type=Math.floor(rng()*PIECES_DEF.length);
+  function makePiece(type, forceRot){
     const states=PIECES_DEF[type];
-    const rot=Math.floor(rng()*states.length);
+    const rot = (forceRot!=null) ? forceRot : Math.floor(rng()*states.length);
     let color = TYPE_COLORS[type % TYPE_COLORS.length];
     let special = null;
     // small chance of special
@@ -1442,8 +1527,68 @@ document.addEventListener('dblclick', function(event) {
     }
     return { type, rot, color, shape:states[rot], special };
   }
+  function randPiece(){
+    return makePiece(Math.floor(rng()*PIECES_DEF.length));
+  }
+  function boardFillRatio(){
+    let n=0;
+    for(let r=0;r<SIZE;r++) for(let c=0;c<SIZE;c++) if(board[r][c]) n++;
+    return n/(SIZE*SIZE);
+  }
+  // 회전 포함, 어떤 형태로든 보드에 들어갈 수 있는 조각인지
+  function fitsAnyRotation(p){
+    return PIECES_DEF[p.type].some(st => canPlaceAnywhere(st));
+  }
+  function randPieceWeighted(){
+    const fill = boardFillRatio();
+    // 점수가 오를수록 구원 강도 감소: 0점=1.0 → 4000점 이상=0.25
+    const skill = Math.max(0.25, 1 - score/4000);
+    const relief = Math.max(0, fill - 0.45) * skill;
+    if(relief <= 0.01) return randPiece();
+    // 작은 조각일수록 가중치 ↑ (조각 크기 1~5칸)
+    const weights = PIECES_DEF.map(states=>{
+      const size = states[0].cells.length;
+      return 1 + relief * (6 - size) * 1.4;
+    });
+    let total = 0;
+    for(const w of weights) total += w;
+    let pick = rng() * total;
+    let type = 0;
+    for(let i=0;i<weights.length;i++){
+      pick -= weights[i];
+      if(pick <= 0){ type = i; break; }
+    }
+    return makePiece(type);
+  }
+  // 최후의 안전장치: 현재 보드에 들어가는 형태 중 하나를 강제로 뽑는다.
+  function forcePlaceablePiece(){
+    const options=[];
+    PIECES_DEF.forEach((states,type)=>{
+      states.forEach((st,rot)=>{
+        if(canPlaceAnywhere(st)) options.push({type,rot});
+      });
+    });
+    if(!options.length) return null; // 보드가 완전히 막힘 — 정당한 게임오버
+    const o = options[Math.floor(rng()*options.length)];
+    return makePiece(o.type, o.rot);
+  }
   function newPieces(){
-    pieces=[randPiece(),randPiece(),randPiece()];
+    if(mode === "daily"){
+      // 시드 공정성: 보드 상태에 따른 재추첨 없이 동일 시퀀스 유지
+      pieces=[randPiece(),randPiece(),randPiece()];
+    }else{
+      pieces=[randPieceWeighted(),randPieceWeighted(),randPieceWeighted()];
+      // 생존 보장: 셋 중 하나도 (회전 포함) 못 놓으면 재추첨
+      let guard=0;
+      while(guard<24 && !pieces.some(fitsAnyRotation)){
+        pieces[guard%3]=randPieceWeighted();
+        guard++;
+      }
+      if(!pieces.some(fitsAnyRotation)){
+        const forced = forcePlaceablePiece();
+        if(forced) pieces[0]=forced;
+      }
+    }
     renderTray();
     // attention pulse
     setTimeout(()=>{
@@ -1721,7 +1866,9 @@ document.addEventListener('dblclick', function(event) {
         for(let rr=0; rr<SIZE; rr++) cells.push([rr,c]);
         const uniq=[...new Set(cells.map(x=>x.join(",")))].map(s=>s.split(",").map(Number));
         spawnParticles(uniq);
-        uniq.forEach(([rr,cc])=> cellEls[rr][cc].classList.add("clearing"));
+        const waveDelay = clearWave(uniq, (rr,cc)=>
+          Math.max(Math.abs(rr-r), Math.abs(cc-c))*14
+        );
         const brect=boardEl.getBoundingClientRect();
         scorePop("+50 🌈", brect.left+brect.width/2, brect.top+brect.height/2);
         S.fanfare();
@@ -1731,14 +1878,12 @@ document.addEventListener('dblclick', function(event) {
         rainbowTriggered = true;
         busy=true;
         setTimeout(()=>{
-          uniq.forEach(([rr,cc])=>{
-            board[rr][cc]=null;
-            cellEls[rr][cc].classList.remove("clearing");
-          });
+          uniq.forEach(([rr,cc])=>{ board[rr][cc]=null; });
+          unclearCells(uniq);
           renderBoard();
           busy=false;
           afterClear();
-        },340);
+        },340+waveDelay);
         break;
       }
     }
@@ -1806,7 +1951,12 @@ document.addEventListener('dblclick', function(event) {
         Storage.data.coins += coinReward;
 
         spawnParticles(uniq);
-        uniq.forEach(([r,c])=> cellEls[r][c].classList.add("clearing"));
+        const rowSet=new Set(clears.rows), colSet=new Set(clears.cols);
+        const waveDelay = clearWave(uniq, (r,c)=>{
+          const dr = rowSet.has(r) ? c*16 : Infinity;
+          const dc = colSet.has(c) ? r*16 : Infinity;
+          return Math.min(dr,dc);
+        });
 
         const brect=boardEl.getBoundingClientRect();
         scorePop("+"+gain, brect.left+brect.width/2, brect.top+brect.height/2);
@@ -1830,14 +1980,12 @@ document.addEventListener('dblclick', function(event) {
         updateHud();
         busy=true;
         setTimeout(()=>{
-          uniq.forEach(([r,c])=>{
-            board[r][c]=null;
-            cellEls[r][c].classList.remove("clearing");
-          });
+          uniq.forEach(([r,c])=>{ board[r][c]=null; });
+          unclearCells(uniq);
           renderBoard();
           busy=false;
           finishTurn();
-        },340);
+        },340+waveDelay);
       }else{
         combo=0;
         updateHud();
@@ -1865,13 +2013,34 @@ document.addEventListener('dblclick', function(event) {
   function isGameOver(){
     const remain=pieces.filter(p=>p);
     if(remain.length===0) return false;
-    // Check current rotation only — player must rotate manually
-    return remain.every(p=> !canPlaceAnywhere(p.shape));
+    // 회전은 무료이므로, 어떤 회전으로도 못 놓을 때만 게임오버
+    return remain.every(p=> !fitsAnyRotation(p));
   }
 
   /* ============================================================
    *  EFFECTS
    * ============================================================ */
+  // 줄이 도미노처럼 순차적으로 사라지는 웨이브 연출.
+  // delayFn(r,c)가 셀별 지연(ms)을 돌려주며, 최대 지연값을 반환한다.
+  function clearWave(cells, delayFn){
+    let maxDelay=0;
+    cells.forEach(([r,c])=>{
+      const d = delayFn ? delayFn(r,c) : 0;
+      if(d>maxDelay) maxDelay=d;
+      const blk = cellEls[r][c].querySelector(".blk");
+      if(blk) blk.style.animationDelay = d+"ms";
+      cellEls[r][c].classList.add("clearing");
+    });
+    return maxDelay;
+  }
+  function unclearCells(cells){
+    cells.forEach(([r,c])=>{
+      const cell=cellEls[r][c];
+      cell.classList.remove("clearing");
+      const blk=cell.querySelector(".blk");
+      if(blk) blk.style.animationDelay="";
+    });
+  }
   function spawnParticles(cells){
     cells.forEach(([r,c])=>{
       const v = board[r][c];
@@ -1922,8 +2091,24 @@ document.addEventListener('dblclick', function(event) {
   /* ============================================================
    *  HUD
    * ============================================================ */
+  // 점수 카운트업 트윈: 숫자가 즉시 바뀌지 않고 부드럽게 올라간다.
+  let displayScore = 0, scoreRaf = null;
+  function tweenScore(){
+    if(displayScore === score){ scoreEl.textContent = score; return; }
+    if(scoreRaf) cancelAnimationFrame(scoreRaf);
+    const from = displayScore, to = score, start = performance.now(), dur = 380;
+    const step = (now)=>{
+      const t = Math.min(1, (now-start)/dur);
+      const e = 1 - Math.pow(1-t, 3); // ease-out cubic
+      displayScore = Math.round(from + (to-from)*e);
+      scoreEl.textContent = displayScore;
+      if(t < 1) scoreRaf = requestAnimationFrame(step);
+      else scoreRaf = null;
+    };
+    scoreRaf = requestAnimationFrame(step);
+  }
   function updateHud(){
-    scoreEl.textContent=score;
+    tweenScore();
     comboEl.textContent=combo;
     if(score>Storage.data.best){
       Storage.data.best = score;
@@ -2006,20 +2191,36 @@ document.addEventListener('dblclick', function(event) {
   }
 
   function showHint(){
-    // find first piece with possible placement and glow it
-    for(const p of pieces){
+    // 회전 포함, 배치 가능한 첫 조각을 찾아 위치를 표시한다.
+    // 현재 회전 상태부터 탐색해 불필요한 회전은 피한다.
+    for(let i=0;i<pieces.length;i++){
+      const p=pieces[i];
       if(!p) continue;
-      for(let r=0;r<=SIZE-p.shape.h;r++){
-        for(let c=0;c<=SIZE-p.shape.w;c++){
-          if(canPlace(p.shape,r,c)){
-            for(const [dr,dc] of p.shape.cells){
-              cellEls[r+dr][c+dc].classList.add("hint-glow");
+      const states=PIECES_DEF[p.type];
+      for(let s=0;s<states.length;s++){
+        const rot=(p.rot+s)%states.length;
+        const shape=states[rot];
+        for(let r=0;r<=SIZE-shape.h;r++){
+          for(let c=0;c<=SIZE-shape.w;c++){
+            if(canPlace(shape,r,c)){
+              if(rot!==p.rot){
+                // 회전해야 들어가는 경우: 조각을 직접 돌려서 보여준다
+                p.rot=rot; p.shape=shape;
+                renderTray();
+                const slot=trayEl.children[i];
+                const pe=slot && slot.querySelector(".piece");
+                if(pe) pe.classList.add("spin");
+                saveRun();
+              }
+              for(const [dr,dc] of shape.cells){
+                cellEls[r+dr][c+dc].classList.add("hint-glow");
+              }
+              setTimeout(()=>{
+                for(let rr=0;rr<SIZE;rr++)for(let cc=0;cc<SIZE;cc++)
+                  cellEls[rr][cc].classList.remove("hint-glow");
+              }, 2500);
+              return true;
             }
-            setTimeout(()=>{
-              for(let rr=0;rr<SIZE;rr++)for(let cc=0;cc<SIZE;cc++)
-                cellEls[rr][cc].classList.remove("hint-glow");
-            }, 2500);
-            return true;
           }
         }
       }
@@ -2262,6 +2463,7 @@ document.addEventListener('dblclick', function(event) {
   function newGame(){
     board=Array.from({length:SIZE},()=>Array(SIZE).fill(null));
     score=0; combo=0; gameOver=false;
+    displayScore=0;
     undoSnap=null;
     activeBooster=null;
     if(MODES[mode] && MODES[mode].cleanup) MODES[mode].cleanup();
@@ -2515,10 +2717,20 @@ document.addEventListener('dblclick', function(event) {
   /* ============================================================
    *  SETTINGS
    * ============================================================ */
+  const THEME_COLORS = { classic:"#1c1208", neon:"#06031a", crystal:"#04141d" };
   function applyTheme(){
-    document.body.className = "theme-"+Storage.data.settings.theme;
+    const theme = Storage.data.settings.theme;
+    // className 전체 덮어쓰기는 fs-active 등 다른 상태 클래스를 지우므로
+    // 테마 클래스만 교체한다.
+    [...document.body.classList].forEach(c=>{
+      if(c.indexOf("theme-")===0) document.body.classList.remove(c);
+    });
+    document.body.classList.add("theme-"+theme);
+    // 시스템 상태바/브라우저 UI 색상도 테마에 맞춘다.
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if(metaTheme) metaTheme.setAttribute("content", THEME_COLORS[theme] || "#1c1208");
     document.querySelectorAll(".theme-chip").forEach(c=>{
-      c.classList.toggle("selected", c.dataset.theme === Storage.data.settings.theme);
+      c.classList.toggle("selected", c.dataset.theme === theme);
     });
   }
   function refreshSettingsUI(){
@@ -2727,13 +2939,72 @@ document.addEventListener('dblclick', function(event) {
   })();
 
   window.addEventListener("resize",resize);
+  if(window.visualViewport){
+    // iOS Safari 주소창 높이 변화에 즉시 대응
+    window.visualViewport.addEventListener("resize", resize);
+  }
   window.addEventListener("blur",()=>{ if(dragData||pending) endGesture(); });
 
+  // iOS: 오디오는 사용자 제스처 안에서 생성/resume 해야 소리가 난다.
+  // 첫 터치 한 번으로 AudioContext를 미리 깨워둔다.
+  window.addEventListener("pointerdown", ()=>{ try{ audio(); }catch(e){} }, { once:true, passive:true });
+
+  let bgmWasOn = false;
   document.addEventListener("visibilitychange",()=>{
     if(document.hidden){
       if(dragData||pending) endGesture();
+      // 백그라운드에서 오디오 정지 (배터리 + 타이머 누적 방지)
+      bgmWasOn = bgmStarted;
+      if(bgmStarted) stopBGM();
+      if(actx && actx.state==="running"){ try{ actx.suspend(); }catch(e){} }
+    }else{
+      if(actx && actx.state==="suspended"){ try{ actx.resume(); }catch(e){} }
+      if(bgmWasOn && Storage.data.settings.bgm) startBGM();
     }
   });
+
+  /* ============================================================
+   *  PWA — 서비스 워커 등록 + 업데이트 알림
+   * ============================================================ */
+  function showUpdateBar(reg){
+    if(document.getElementById("updatebar")) return;
+    const bar=document.createElement("div");
+    bar.id="updatebar";
+    bar.className="updatebar";
+    const msg=document.createElement("span");
+    msg.textContent="새 버전이 준비됐어요!";
+    const btn=document.createElement("button");
+    btn.textContent="업데이트";
+    btn.addEventListener("click", ()=>{
+      if(reg.waiting) reg.waiting.postMessage({type:"SKIP_WAITING"});
+      bar.remove();
+    });
+    bar.appendChild(msg); bar.appendChild(btn);
+    document.body.appendChild(bar);
+  }
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", ()=>{
+      navigator.serviceWorker.register("./sw.js").then(reg=>{
+        // 이미 대기 중인 새 버전이 있으면 바로 알림
+        if(reg.waiting && navigator.serviceWorker.controller) showUpdateBar(reg);
+        reg.addEventListener("updatefound", ()=>{
+          const nw = reg.installing;
+          if(!nw) return;
+          nw.addEventListener("statechange", ()=>{
+            if(nw.state==="installed" && navigator.serviceWorker.controller){
+              showUpdateBar(reg);
+            }
+          });
+        });
+      }).catch(()=>{ /* file:// 등 미지원 환경은 조용히 무시 */ });
+      let reloaded=false;
+      navigator.serviceWorker.addEventListener("controllerchange", ()=>{
+        if(reloaded) return;
+        reloaded=true;
+        location.reload();
+      });
+    });
+  }
 
   /* ============================================================
    *  BOOT
