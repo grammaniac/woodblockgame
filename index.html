@@ -919,17 +919,8 @@
     </div>
   </div>
 
-  <!-- Stage select modal (모험 모드) -->
-  <div class="overlay" id="stageOverlay">
-    <div class="modal">
-      <h2>모험 🗺️</h2>
-      <div class="sub">돌을 모두 부수면 클리어 · 적은 조각으로 깰수록 별 ↑</div>
-      <div class="stage-grid" id="stageGrid"></div>
-      <button class="bigbtn secondary" data-close="stageOverlay">닫기</button>
-    </div>
-  </div>
-
-  <!-- Launch chooser (앱 실행 시 선택) -->
+  <!-- Launch chooser (앱 실행 시 선택) — stageOverlay보다 앞에 선언해야
+       '모험 스테이지 선택'을 눌렀을 때 스테이지 화면이 위에 표시된다 -->
   <div class="overlay" id="launchOverlay">
     <div class="modal">
       <h2>다시 오셨네요! 👋</h2>
@@ -939,6 +930,16 @@
         <button class="bigbtn" id="launchAdvBtn">🗺️ 모험 스테이지 선택</button>
         <button class="bigbtn secondary" id="launchMenuBtn">메뉴</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Stage select modal (모험 모드) -->
+  <div class="overlay" id="stageOverlay">
+    <div class="modal">
+      <h2>모험 🗺️</h2>
+      <div class="sub">돌을 모두 부수면 클리어 · 적은 조각으로 깰수록 별 ↑</div>
+      <div class="stage-grid" id="stageGrid"></div>
+      <button class="bigbtn secondary" data-close="stageOverlay">닫기</button>
     </div>
   </div>
 
