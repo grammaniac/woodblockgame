@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<meta name="theme-color" content="#120e26" />
+<meta name="theme-color" content="#1c1208" />
 <!-- iOS 홈 화면에서 실행 시 Safari UI 없이 독립 앱처럼 띄우기 위한 메타. -->
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -74,93 +74,11 @@
     --frame-stripe: rgba(160,232,255,.08);
   }
 
-  /* ============================================
-     Theme: Jelly (기본) — 던전 속 말랑 젤리 블롭
-     ============================================ */
-  body.theme-jelly{
-    --wood-dark:#8d6a42;
-    --wood:#b08a58;
-    --wood-light:#d8b276;
-    --bg-grad-1:#2c2452;
-    --bg-grad-2:#120e26;
-    --text-main:#f0e9ff;
-    --text-accent:#ffd95e;
-    --text-sub:#9d92c8;
-    --gold:#ffc83d;
-    --board-grad-1:#241d45;
-    --board-grad-2:#141030;
-    --slot-grad-1:#2b2350;
-    --slot-grad-2:#1a1438;
-    --hole-grad-1:#322a5c;
-    --hole-grad-2:#1f1942;
-    --frame-stripe: rgba(0,0,0,.0);
-  }
-  /* 사암 벽돌 프레임 */
-  body.theme-jelly .frame{
-    background:
-      repeating-linear-gradient(0deg, transparent 0 22px, rgba(86,58,28,.5) 22px 25px),
-      repeating-linear-gradient(90deg, transparent 0 46px, rgba(86,58,28,.45) 46px 49px),
-      linear-gradient(160deg, var(--wood-light), var(--wood) 55%, var(--wood-dark));
-    border-color:#3a2a14;
-  }
-  /* 젤리 블롭 몸체: 아래가 통통한 물방울 형태 */
-  body.theme-jelly .blk{
-    inset:4%;
-    border-radius: 50% 50% 47% 47% / 60% 60% 42% 42%;
-    background:
-      radial-gradient(ellipse at 50% 32%,
-        color-mix(in srgb, var(--c) 52%, #ffffff) 0%,
-        var(--c) 52%,
-        color-mix(in srgb, var(--c) 62%, #000000) 100%);
-    box-shadow:
-      inset 0 -0.24em 0.22em rgba(0,0,0,.35),
-      inset 0 0.14em 0.16em rgba(255,255,255,.5),
-      0 0.12em 0.2em rgba(0,0,0,.5);
-  }
-  /* 눈: 흰자 위 검은 동공 (위 레이어가 먼저 선언됨) */
-  body.theme-jelly .blk::after{
-    content:""; position:absolute; inset:0;
-    left:0; top:0; width:100%; height:100%;
-    border-radius:inherit;
-    filter:none;
-    background:
-      radial-gradient(circle at 36% 39%, #23233d 0 6.5%, rgba(0,0,0,0) 8%),
-      radial-gradient(circle at 64% 39%, #23233d 0 6.5%, rgba(0,0,0,0) 8%),
-      radial-gradient(circle at 35% 40%, #ffffff 0 13%, rgba(255,255,255,0) 14.5%),
-      radial-gradient(circle at 65% 40%, #ffffff 0 13%, rgba(255,255,255,0) 14.5%),
-      radial-gradient(circle at 30% 18%, rgba(255,255,255,.75) 0 5%, rgba(255,255,255,0) 12%);
-  }
-  /* 돌은 각진 바위 그대로 (눈 없음 — 전역 .blk.stone::after display:none이 처리)
-     테마의 .blk 규칙이 특이도에서 이기므로 바위 질감을 명시적으로 복원한다 */
-  body.theme-jelly .blk.stone{
-    inset:7%;
-    border-radius:22%;
-    background:
-      radial-gradient(circle at 30% 25%, rgba(255,255,255,.22), transparent 45%),
-      linear-gradient(145deg, #9a9aa4, #5e5e68 55%, #44444e);
-    box-shadow: inset 0 -3px 0 rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.15);
-  }
-  /* 배치 시 말랑 출렁임 */
-  body.theme-jelly .cell.pop .blk{
-    animation: jellypop .32s cubic-bezier(.34,1.56,.64,1);
-  }
-  @keyframes jellypop{
-    0%{ transform: scale(1.28,.6); }
-    45%{ transform: scale(.85,1.18); }
-    72%{ transform: scale(1.08,.93); }
-    100%{ transform: scale(1,1); }
-  }
-  /* 트레이의 젤리도 같은 형태 유지 (회전 배지 색 보정) */
-  body.theme-jelly .slot .rotbadge{ color:var(--gold); }
-  @media (prefers-reduced-motion: reduce){
-    body.theme-jelly .cell.pop .blk{ animation:none; }
-  }
-
   *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html,body{ height:100%; }
   /* standalone(홈 화면 앱)에서 홈 인디케이터 영역에 흰 줄이 비치지 않도록
      html에도 배경을 깐다. 테마 전환 시 JS(applyTheme)가 색을 갱신한다. */
-  html{ background:#120e26; }
+  html{ background:#1c1208; }
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     background:
@@ -664,7 +582,6 @@
   .theme-chip[data-theme="classic"]{ background:radial-gradient(circle, #8a5e36, #3a2814); }
   .theme-chip[data-theme="neon"]{ background:radial-gradient(circle, #3d2d80, #06031a); }
   .theme-chip[data-theme="crystal"]{ background:radial-gradient(circle, #4f87a8, #04141d); }
-  .theme-chip[data-theme="jelly"]{ background:radial-gradient(circle at 35% 30%, #ff8ec7, #6c3fd4 70%, #2c2452); }
   .toggle{
     width:44px; height:24px; border-radius:12px;
     background:#5c3c1f; position:relative; cursor:pointer;
@@ -870,7 +787,7 @@
     box-shadow: inset 0 -3px 0 rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.15);
   }
   .blk.stone::after{ display:none; } /* 글로시 하이라이트 제거 (돌 질감) */
-  body .blk.stone.cracked{
+  .blk.stone.cracked{
     background:
       url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Cg%20fill%3D'none'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M56%200%20L52%207%20L57%2013%20L49%2020%20L55%2027%20L46%2034%20L53%2041%20L48%2049%20L54%2056%20L43%2063%20L50%2070%20L44%2078%20L49%2085%20L42%2092%20L46%20100'%20stroke%3D'rgba(0%2C0%2C0%2C0.6)'%20stroke-width%3D'3.2'%2F%3E%3Cpath%20d%3D'M52%207%20L40%2012%20L30%2010%20M49%2020%20L36%2026%20L24%2024%20M53%2041%20L66%2047%20L78%2044%20M54%2056%20L67%2063%20L76%2072%20M50%2070%20L36%2076%20L25%2074%20M49%2085%20L60%2091%20L68%2099'%20stroke%3D'rgba(0%2C0%2C0%2C0.45)'%20stroke-width%3D'1.9'%2F%3E%3Cpath%20d%3D'M40%2012%20L34%2019%20M36%2026%20L29%2033%20L20%2035%20M66%2047%20L72%2055%20M67%2063%20L62%2071%20M36%2076%20L31%2084%20M30%2010%20L21%206%20M78%2044%20L87%2038%20M25%2074%20L14%2079'%20stroke%3D'rgba(0%2C0%2C0%2C0.32)'%20stroke-width%3D'1.2'%2F%3E%3Cpath%20d%3D'M34%2019%20L37%2025%20M72%2055%20L80%2060%20M29%2033%20L33%2040%20M62%2071%20L67%2078%20M31%2084%20L36%2090%20M21%206%20L13%203%20M87%2038%20L94%2041'%20stroke%3D'rgba(0%2C0%2C0%2C0.22)'%20stroke-width%3D'0.8'%2F%3E%3Cpath%20d%3D'M58%201%20L54%208%20L59%2014%20M51%2022%20L57%2028%20M55%2043%20L50%2050'%20stroke%3D'rgba(255%2C255%2C255%2C0.14)'%20stroke-width%3D'1.2'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat,
       radial-gradient(circle at 30% 25%, rgba(255,255,255,.14), transparent 45%),
@@ -1087,7 +1004,6 @@
         <div class="setting-row">
           <div class="lbl">테마</div>
           <div class="theme-picker" id="themePicker">
-            <div class="theme-chip" data-theme="jelly" title="젤리"></div>
             <div class="theme-chip" data-theme="classic" title="클래식"></div>
             <div class="theme-chip" data-theme="neon" title="네온"></div>
             <div class="theme-chip" data-theme="crystal" title="크리스탈"></div>
@@ -1227,7 +1143,7 @@ document.addEventListener('dblclick', function(event) {
    *  STORAGE
    * ============================================================ */
   const KEY = "wbq_v1";
-  const DATA_VERSION = 3;
+  const DATA_VERSION = 2;
   const Storage = {
     data: null,
     load(){
@@ -1259,14 +1175,8 @@ document.addEventListener('dblclick', function(event) {
       if(v < 2){
         // v1 → v2: 구조 변화 없음. 버전 필드만 도입.
       }
-      if(v < 3){
-        // v2 → v3: 젤리 테마가 새 기본값. 기본값(클래식)을 쓰던 유저만
-        // 한 번 전환 (직접 고른 네온/크리스탈은 존중).
-        if(this.data.settings && this.data.settings.theme === "classic"){
-          this.data.settings.theme = "jelly";
-        }
-      }
       // 이후 버전 마이그레이션은 여기 추가:
+      // if(v < 3){ ... }
       this.data.version = DATA_VERSION;
     },
     defaults(){
@@ -1287,7 +1197,7 @@ document.addEventListener('dblclick', function(event) {
           totalBlocks: 0,
         },
         settings: {
-          theme: "jelly",
+          theme: "classic",
           sfx: true,
           bgm: true,
           vibration: true,
@@ -3167,7 +3077,7 @@ document.addEventListener('dblclick', function(event) {
   /* ============================================================
    *  SETTINGS
    * ============================================================ */
-  const THEME_COLORS = { jelly:"#120e26", classic:"#1c1208", neon:"#06031a", crystal:"#04141d" };
+  const THEME_COLORS = { classic:"#1c1208", neon:"#06031a", crystal:"#04141d" };
   function applyTheme(){
     const theme = Storage.data.settings.theme;
     // className 전체 덮어쓰기는 fs-active 등 다른 상태 클래스를 지우므로
