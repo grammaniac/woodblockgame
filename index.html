@@ -499,6 +499,12 @@
     font-family:inherit;
   }
   .menu-mode:active{ border-color: var(--gold); }
+  .menu-mode.featured{
+    border-color: var(--gold);
+    background:linear-gradient(160deg, rgba(241,193,46,.12), rgba(0,0,0,.45));
+    box-shadow:0 0 14px rgba(241,193,46,.18);
+  }
+  .menu-mode.featured .mode-icon{ font-size:32px; }
   .menu-mode .mode-icon{ font-size:28px; }
   .menu-mode .mode-name{ font-weight:800; font-size:15px; color:var(--text-accent); }
   .menu-mode .mode-desc{ font-size:11px; color:var(--text-sub); }
@@ -507,6 +513,7 @@
     background:var(--gold); color:#3a2510;
     padding:2px 8px; border-radius:8px;
     font-size:10px; font-weight:900;
+    white-space:nowrap; flex-shrink:0;
   }
   .menu-mode.locked{ opacity:.5; }
   .menu-mode.locked .badge{ background:#999; color:#444; }
@@ -779,10 +786,9 @@
   .blk.stone::after{ display:none; } /* 글로시 하이라이트 제거 (돌 질감) */
   .blk.stone.cracked{
     background:
-      linear-gradient(52deg, transparent 46%, rgba(0,0,0,.6) 48%, rgba(0,0,0,.6) 50%, transparent 52%),
-      linear-gradient(-25deg, transparent 58%, rgba(0,0,0,.5) 60%, rgba(0,0,0,.5) 61.5%, transparent 64%),
-      radial-gradient(circle at 30% 25%, rgba(255,255,255,.16), transparent 45%),
-      linear-gradient(145deg, #8a8a94, #50505a 55%, #3a3a44);
+      url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Cg%20fill%3D'none'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M57%200%20L49%2013%20L58%2025%20L45%2038%20L52%2052%20L40%2065%20L48%2079%20L41%2091%20L45%20100'%20stroke%3D'rgba(0%2C0%2C0%2C0.62)'%20stroke-width%3D'4.5'%2F%3E%3Cpath%20d%3D'M49%2013%20L33%2020%20L14%2017%20M45%2038%20L63%2045%20L84%2042%20M40%2065%20L24%2073%20L6%2072%20M48%2079%20L62%2088%20L73%2097'%20stroke%3D'rgba(0%2C0%2C0%2C0.45)'%20stroke-width%3D'2.6'%2F%3E%3Cpath%20d%3D'M33%2020%20L20%2030%20M63%2045%20L74%2056%20M24%2073%20L18%2084'%20stroke%3D'rgba(0%2C0%2C0%2C0.3)'%20stroke-width%3D'1.6'%2F%3E%3Cpath%20d%3D'M59%201%20L51%2014%20L60%2026%20M47%2040%20L54%2053'%20stroke%3D'rgba(255%2C255%2C255%2C0.15)'%20stroke-width%3D'1.6'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat,
+      radial-gradient(circle at 30% 25%, rgba(255,255,255,.14), transparent 45%),
+      linear-gradient(145deg, #8a8a94, #4c4c56 55%, #36363f);
   }
   .cell.stonehit .blk{
     animation: stonehit .34s ease;
@@ -2154,7 +2160,7 @@ document.addEventListener('dblclick', function(event) {
   function spawnParticles(cells){
     cells.forEach(([r,c])=>{
       const v = board[r][c];
-      const color = v ? (v.color || "#f7c63e") : "#f7c63e";
+      const color = v ? (v.stone ? "#a3a3ad" : (v.color || "#f7c63e")) : "#f7c63e";
       const rect=cellEls[r][c].getBoundingClientRect();
       const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
       for(let i=0;i<3;i++){
@@ -2617,6 +2623,15 @@ document.addEventListener('dblclick', function(event) {
     return n;
   }
 
+  // 아직 깨지 않은 첫 스테이지 (해금 범위 내). 전부 클리어면 null.
+  function nextAdventureStage(){
+    const adv = Storage.data.adventure;
+    for(let n=1; n<=Math.min(adv.unlocked, STAGES.length); n++){
+      if(!adv.stars[n]) return n;
+    }
+    return null;
+  }
+
   function startStage(n){
     if(MODES[mode] && MODES[mode].cleanup) MODES[mode].cleanup();
     mode = "adventure";
@@ -2990,8 +3005,10 @@ document.addEventListener('dblclick', function(event) {
         list.appendChild(btn);
       }
     }
-    Object.keys(MODES).forEach(k=>{
+    const MODE_ORDER = ["adventure","classic","challenge","timeattack","daily"];
+    MODE_ORDER.forEach(k=>{
       const m = MODES[k];
+      if(!m) return;
       const btn = document.createElement("button");
       btn.className = "menu-mode";
       let badge = "";
@@ -3000,8 +3017,12 @@ document.addEventListener('dblclick', function(event) {
       }else if(k === "daily"){
         if(canClaimDaily()) badge = '<div class="badge">NEW</div>';
       }else if(k === "adventure"){
+        btn.classList.add("featured");
+        const next = nextAdventureStage();
         const cleared = Object.keys(Storage.data.adventure.stars).length;
-        badge = '<div class="badge">'+cleared+'/'+STAGES.length+'</div>';
+        badge = next
+          ? '<div class="badge">▶ 스테이지 '+next+'</div>'
+          : '<div class="badge">⭐ '+cleared+'/'+STAGES.length+'</div>';
       }
       btn.innerHTML = `
         <div class="mode-icon">${m.icon}</div>
@@ -3181,8 +3202,12 @@ document.addEventListener('dblclick', function(event) {
     Storage.data.tutorialDone = true;
     Storage.save();
     document.getElementById("tutOverlay").classList.remove("show");
-    // If no active game, open the menu so user can pick a mode
-    if(pieces.every(p=>!p)) openMenu();
+    // 첫 실행: 튜토리얼이 끝나면 모험 1스테이지로 바로 입장
+    if(pieces.every(p=>!p)){
+      const next = nextAdventureStage();
+      if(next) startStage(next);
+      else openMenu();
+    }
   }
   document.getElementById("tutNext").addEventListener("click",()=>{
     S.click();
@@ -3390,7 +3415,11 @@ document.addEventListener('dblclick', function(event) {
     if(!Storage.data.tutorialDone){
       showTutorial();
     }else{
-      openMenu();
+      // 모험 모드가 기본: 도전 중인 스테이지로 바로 시작.
+      // 전부 클리어했으면 기존처럼 메뉴를 연다.
+      const next = nextAdventureStage();
+      if(next) startStage(next);
+      else openMenu();
     }
   }
 })();
