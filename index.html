@@ -769,6 +769,71 @@
     .slot.tut-pulse{ animation:none; }
     .slot .rotbadge{ animation:none; }
   }
+  /* ---------- 모험 모드: 돌 블록 ---------- */
+  .blk.stone{
+    background:
+      radial-gradient(circle at 30% 25%, rgba(255,255,255,.22), transparent 45%),
+      linear-gradient(145deg, #9a9aa4, #5e5e68 55%, #44444e);
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,.35), inset 0 2px 0 rgba(255,255,255,.15);
+  }
+  .blk.stone::after{ display:none; } /* 글로시 하이라이트 제거 (돌 질감) */
+  .blk.stone.cracked{
+    background:
+      linear-gradient(52deg, transparent 46%, rgba(0,0,0,.6) 48%, rgba(0,0,0,.6) 50%, transparent 52%),
+      linear-gradient(-25deg, transparent 58%, rgba(0,0,0,.5) 60%, rgba(0,0,0,.5) 61.5%, transparent 64%),
+      radial-gradient(circle at 30% 25%, rgba(255,255,255,.16), transparent 45%),
+      linear-gradient(145deg, #8a8a94, #50505a 55%, #3a3a44);
+  }
+  .cell.stonehit .blk{
+    animation: stonehit .34s ease;
+  }
+  @keyframes stonehit{
+    0%{ transform:translateX(0); filter:brightness(1); }
+    25%{ transform:translateX(-3px); filter:brightness(1.7); }
+    50%{ transform:translateX(3px); }
+    75%{ transform:translateX(-2px); }
+    100%{ transform:translateX(0); filter:brightness(1); }
+  }
+
+  /* ---------- 모험 모드: 스테이지 선택 ---------- */
+  .stage-grid{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap:10px;
+    margin:14px 0;
+    max-height: 46vh;
+    overflow-y:auto;
+    padding:2px;
+  }
+  .stagebtn{
+    border:none;
+    border-radius:12px;
+    padding:10px 4px 8px;
+    background:linear-gradient(160deg,var(--wood-light),var(--wood-dark));
+    box-shadow:0 3px 0 rgba(0,0,0,.35);
+    color:var(--text-main);
+    cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    transition: transform .12s ease;
+  }
+  .stagebtn:active{ transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,.35); }
+  .stagebtn .stnum{ font-size:18px; font-weight:800; }
+  .stagebtn .ststars{
+    font-size:11px; letter-spacing:1px;
+    color:var(--gold);
+    min-height:14px;
+  }
+  .stagebtn.locked{
+    opacity:.42;
+    filter:grayscale(.7);
+    cursor:default;
+    box-shadow:none;
+  }
+  .stagebtn.locked:active{ transform:none; }
+
+  @media (prefers-reduced-motion: reduce){
+    .cell.stonehit .blk{ animation:none; }
+  }
 </style>
 </head>
 <body>
@@ -838,9 +903,20 @@
       <div class="best" id="finalBest">최고 점수 0</div>
       <div id="rewardBox" style="margin-bottom:10px; color:var(--gold); font-weight:800;"></div>
       <div>
+        <button class="bigbtn" id="nextStageBtn" style="display:none;">다음 스테이지 ▶</button>
         <button class="bigbtn" id="restartBtn">다시 하기</button>
         <button class="bigbtn secondary" id="toMenuBtn">메뉴</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Stage select modal (모험 모드) -->
+  <div class="overlay" id="stageOverlay">
+    <div class="modal">
+      <h2>모험 🗺️</h2>
+      <div class="sub">돌을 모두 부수면 클리어 · 적은 조각으로 깰수록 별 ↑</div>
+      <div class="stage-grid" id="stageGrid"></div>
+      <button class="bigbtn secondary" data-close="stageOverlay">닫기</button>
     </div>
   </div>
 
@@ -1084,6 +1160,7 @@ document.addEventListener('dblclick', function(event) {
       return {
         version: DATA_VERSION,
         best: 0,
+        adventure: { unlocked: 1, stars: {} },
         coins: 100,
         xp: 0,
         level: 1,
@@ -1410,10 +1487,14 @@ document.addEventListener('dblclick', function(event) {
         cell.classList.remove("ghost","gline","hint-glow");
         const v = board[r][c];
         const blk = cell.querySelector(".blk");
-        blk.classList.remove("rainbow","golden");
+        blk.classList.remove("rainbow","golden","stone","cracked");
         if(v){
           cell.classList.add("filled");
-          if(v.special === SPECIAL_RAINBOW){
+          if(v.stone){
+            blk.classList.add("stone");
+            if(v.hp <= 1) blk.classList.add("cracked");
+            cell.style.setProperty("--c", "#74747e");
+          }else if(v.special === SPECIAL_RAINBOW){
             blk.classList.add("rainbow");
             cell.style.setProperty("--c", "#fff");
           }else if(v.special === SPECIAL_GOLDEN){
@@ -1852,6 +1933,7 @@ document.addEventListener('dblclick', function(event) {
       placed.push([rr,cc]);
     }
     pieces[idx]=null;
+    if(mode==="adventure" && modeState) modeState.used = (modeState.used||0)+1;
     score += piece.shape.cells.length;
     Storage.data.stats.totalBlocks += piece.shape.cells.length;
     S.place();
@@ -1886,7 +1968,7 @@ document.addEventListener('dblclick', function(event) {
         rainbowTriggered = true;
         busy=true;
         setTimeout(()=>{
-          uniq.forEach(([rr,cc])=>{ board[rr][cc]=null; });
+          clearCellsWithStones(uniq);
           unclearCells(uniq);
           renderBoard();
           busy=false;
@@ -1921,6 +2003,7 @@ document.addEventListener('dblclick', function(event) {
           for(let i=0;i<SIZE;i++){
             const v = getCell(i);
             if(!v) return false;
+            if(v.stone) return false; // 돌은 무색 — 같은 색 보너스 불가
             if(v.special === SPECIAL_RAINBOW || v.special === SPECIAL_GOLDEN) continue;
             if(common === null) common = v.color;
             else if(v.color !== common) return false;
@@ -1988,7 +2071,7 @@ document.addEventListener('dblclick', function(event) {
         updateHud();
         busy=true;
         setTimeout(()=>{
-          uniq.forEach(([r,c])=>{ board[r][c]=null; });
+          clearCellsWithStones(uniq);
           unclearCells(uniq);
           renderBoard();
           busy=false;
@@ -2030,23 +2113,42 @@ document.addEventListener('dblclick', function(event) {
    * ============================================================ */
   // 줄이 도미노처럼 순차적으로 사라지는 웨이브 연출.
   // delayFn(r,c)가 셀별 지연(ms)을 돌려주며, 최대 지연값을 반환한다.
+  // 살아남는 돌(hp 2 이상)은 사라지는 대신 '타격' 연출을 받는다.
   function clearWave(cells, delayFn){
     let maxDelay=0;
     cells.forEach(([r,c])=>{
       const d = delayFn ? delayFn(r,c) : 0;
       if(d>maxDelay) maxDelay=d;
-      const blk = cellEls[r][c].querySelector(".blk");
+      const cell = cellEls[r][c];
+      const blk = cell.querySelector(".blk");
       if(blk) blk.style.animationDelay = d+"ms";
-      cellEls[r][c].classList.add("clearing");
+      const v = board[r][c];
+      if(v && v.stone && v.hp > 1){
+        cell.classList.add("stonehit"); // 금만 가고 살아남는 돌
+      }else{
+        cell.classList.add("clearing");
+      }
     });
     return maxDelay;
   }
   function unclearCells(cells){
     cells.forEach(([r,c])=>{
       const cell=cellEls[r][c];
-      cell.classList.remove("clearing");
+      cell.classList.remove("clearing","stonehit");
       const blk=cell.querySelector(".blk");
       if(blk) blk.style.animationDelay="";
+    });
+  }
+  // 줄 클리어 시 셀 제거: 일반 블록은 사라지고, 돌은 내구도가 1 깎인다.
+  function clearCellsWithStones(cells){
+    cells.forEach(([r,c])=>{
+      const v=board[r][c];
+      if(v && v.stone){
+        v.hp--;
+        if(v.hp<=0) board[r][c]=null;
+      }else{
+        board[r][c]=null;
+      }
     });
   }
   function spawnParticles(cells){
@@ -2118,7 +2220,8 @@ document.addEventListener('dblclick', function(event) {
   function updateHud(){
     tweenScore();
     comboEl.textContent=combo;
-    if(score>Storage.data.best){
+    // 모험 모드는 판이 짧아 점수 체계가 달라 최고 기록에서 제외
+    if(score>Storage.data.best && mode!=="adventure"){
       Storage.data.best = score;
     }
     bestEl.textContent=Storage.data.best;
@@ -2134,6 +2237,10 @@ document.addEventListener('dblclick', function(event) {
       objectiveEl.innerHTML = "<b>"+Math.max(0, Math.ceil(modeState.timeLeft))+"</b>초 남음";
     }else if(mode === "daily"){
       objectiveEl.innerHTML = "데일리 시드";
+    }else if(mode === "adventure"){
+      const left = countStones();
+      const par = (modeState && modeState.stage) ? STAGES[modeState.stage-1].par : 0;
+      objectiveEl.innerHTML = "남은 돌 <b>"+left+"</b> · 조각 "+((modeState&&modeState.used)||0)+"/"+par+" ★3";
     }else{
       objectiveEl.innerHTML = "";
     }
@@ -2248,7 +2355,7 @@ document.addEventListener('dblclick', function(event) {
       undoSnap = snapshot();
       Storage.data.boosters.hammer--;
       activeBooster = null;
-      board[r][c] = null;
+      board[r][c] = null; // 망치는 돌도 한 방에 부순다
       cellEls[r][c].classList.add("clearing");
       spawnParticles([[r,c]]);
       S.booster();
@@ -2258,6 +2365,7 @@ document.addEventListener('dblclick', function(event) {
         cellEls[r][c].classList.remove("clearing");
         renderBoard();
         saveRun();
+        checkModeWin(); // 마지막 돌을 망치로 부순 경우
       }, 300);
     }else if(activeBooster === "bomb"){
       const affected=[];
@@ -2274,7 +2382,10 @@ document.addEventListener('dblclick', function(event) {
       Storage.data.boosters.bomb--;
       activeBooster = null;
       affected.forEach(([rr,cc])=>{
-        cellEls[rr][cc].classList.add("clearing");
+        const v=board[rr][cc];
+        // 살아남을 돌(폭탄은 1 데미지)은 타격 연출만
+        if(v && v.stone && v.hp > 1) cellEls[rr][cc].classList.add("stonehit");
+        else cellEls[rr][cc].classList.add("clearing");
       });
       spawnParticles(affected);
       S.booster(); S.fanfare();
@@ -2282,12 +2393,11 @@ document.addEventListener('dblclick', function(event) {
       shake();
       renderBoosters();
       setTimeout(()=>{
-        affected.forEach(([rr,cc])=>{
-          board[rr][cc] = null;
-          cellEls[rr][cc].classList.remove("clearing");
-        });
+        clearCellsWithStones(affected);
+        unclearCells(affected);
         renderBoard();
         saveRun();
+        checkModeWin(); // 마지막 돌을 폭탄으로 부순 경우
       }, 340);
     }
   }
@@ -2373,6 +2483,44 @@ document.addEventListener('dblclick', function(event) {
       },
       checkWin(){ return false; }
     },
+    adventure: {
+      name: "모험",
+      icon: "🗺️",
+      desc: "돌을 모두 부수고 스테이지를 정복하세요",
+      init(){ /* startStage()가 초기화를 담당 */ },
+      checkWin(){
+        if(!modeState || !modeState.totalStones) return false;
+        if(countStones() > 0) return false;
+        // ----- 스테이지 클리어 -----
+        gameOver = true;
+        const st = modeState.stage;
+        const used = modeState.used || 0;
+        const par = STAGES[st-1].par;
+        const stars = used <= par ? 3 : used <= par+5 ? 2 : 1;
+        const adv = Storage.data.adventure;
+        const first = !adv.stars[st];
+        let reward = 15 + st*2 + stars*8;
+        if(first) reward *= 2; // 첫 클리어 2배
+        Storage.data.coins += reward;
+        adv.stars[st] = Math.max(adv.stars[st]||0, stars);
+        if(st >= adv.unlocked && st < STAGES.length){
+          adv.unlocked = st + 1;
+        }
+        Storage.data.stats.gamesPlayed++;
+        Storage.data.savedRun = null;
+        Storage.save();
+        S.fanfare();
+        vibrate([30,50,30,50,60]);
+        showOverlay(
+          "스테이지 "+st+" 클리어!",
+          "조각 "+used+"개 사용" + (used<=par ? " · 완벽해요!" : ""),
+          "★".repeat(stars)+"☆".repeat(3-stars)+"  +"+reward+" 🪙"+(first?" (첫 클리어 2배)":"")
+        );
+        const nb = document.getElementById("nextStageBtn");
+        nb.style.display = (st < STAGES.length) ? "" : "none";
+        return true;
+      }
+    },
   };
 
   // Mulberry32 seeded RNG factory
@@ -2388,6 +2536,143 @@ document.addEventListener('dblclick', function(event) {
   function dailySeed(){
     const d = new Date();
     return d.getFullYear()*10000 + (d.getMonth()+1)*100 + d.getDate();
+  }
+
+  /* ============================================================
+   *  ADVENTURE — 스테이지 데이터
+   *  o = 금 간 돌(1회에 파괴), # = 단단한 돌(2회 필요)
+   *  설계 원칙: 돌은 소수의 줄에 집중 배치(전략성), 총량 16개 이하
+   *  (자유 공간 75% 보장), 한 줄에 7개 이상 금지(자동 클리어 방지).
+   *  par = 별 3개 기준 조각 수 (par+5까지 별 2개)
+   * ============================================================ */
+  const STAGES = [
+    { par: 7, map: [    // 1. 첫 만남
+      "........","........","........","..ooo...",
+      "........","........","........","........"]},
+    { par: 7, map: [    // 2. 두 줄
+      "........","........","...oo...","........",
+      "........","...oo...","........","........"]},
+    { par: 9, map: [    // 3. 기둥
+      "........","........","...o....","...o....",
+      "...o....","...o....","........","........"]},
+    { par: 10, map: [   // 4. 미로 벽 (돌이 많은 줄은 오히려 쉽다는 교훈)
+      "........","######..","........","..######",
+      "........","####....","........","........"]},
+    { par: 13, map: [   // 5. 단단한 돌
+      "........","........","........","..###...",
+      "........","........","........","........"]},
+    { par: 17, map: [   // 6. 십자가
+      "........","....o...","....o...",".oo#oo..",
+      "....o...","....o...","........","........"]},
+    { par: 19, map: [   // 7. 요새 기둥
+      "........","##....##","##....##","........",
+      "........","##....##","##....##","........"]},
+    { par: 20, map: [   // 8. 두 기둥
+      "........",".o....o.",".o....o.",".#....#.",
+      ".#....#.",".o....o.","........","........"]},
+    { par: 21, map: [   // 9. 샌드위치
+      "........",".oo##oo.","........","........",
+      ".oo##oo.","........","........","........"]},
+    { par: 21, map: [   // 10. 금고
+      "######..","#.......","#.......","#.......",
+      "#.......","........","........","........"]},
+    { par: 21, map: [   // 11. 모래시계
+      ".####...","..ooo...","...o....","...o....",
+      "..ooo...",".####...","........","........"]},
+    { par: 21, map: [   // 12. 더블 프레임
+      "##....##","##....##","........","........",
+      "........","........","##....##","##....##"]},
+    { par: 22, map: [   // 13. 네 개의 창문
+      "........",".##..##.",".##..##.","........",
+      "........",".oo..oo.","........","........"]},
+    { par: 23, map: [   // 14. 쌍둥이 벽돌
+      "........","..##....","..##....","........",
+      "........","....##..","....##..","........"]},
+    { par: 27, map: [   // 15. H
+      "........","..#..#..","..#..#..","..####..",
+      "..#..#..","..#..#..","........","........"]},
+    { par: 28, map: [   // 16. 두꺼운 십자
+      "........","...##...","...##...",".######.",
+      "...##...","...##...","........","........"]},
+    { par: 28, map: [   // 17. 계단
+      "........",".##.....",".###....","..###...",
+      "...###..","....##..","........","........"]},
+    { par: 29, map: [   // 18. 천장
+      ".######.","........","........","........",
+      "........","........","........","........"]},
+    { par: 30, map: [   // 19. 바닥과 천장
+      "..####..","........","........","........",
+      "........","........","........",".######."]},
+    { par: 32, map: [   // 20. 최후의 방
+      "..####..",".o....o.",".o....o.","........",
+      "........",".o....o.",".o....o.","..####.."]},
+  ];
+
+  function countStones(){
+    let n=0;
+    for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){
+      const v=board[r][c];
+      if(v && v.stone) n++;
+    }
+    return n;
+  }
+
+  function startStage(n){
+    if(MODES[mode] && MODES[mode].cleanup) MODES[mode].cleanup();
+    mode = "adventure";
+    rng = Math.random;
+    modeNameEl.textContent = "모험 "+n;
+    newGame();
+    // 돌 배치
+    const st = STAGES[n-1];
+    st.map.forEach((row,r)=>{
+      for(let c=0;c<SIZE;c++){
+        const ch=row[c];
+        if(ch==="#") board[r][c]={stone:true, hp:2};
+        else if(ch==="o") board[r][c]={stone:true, hp:1};
+      }
+    });
+    modeState = { stage:n, used:0, totalStones: countStones() };
+    renderBoard();
+    newPieces(); // 돌이 깔린 보드 기준으로 배치 보장 재계산
+    updateHud();
+    renderObjective();
+    saveRun();
+  }
+
+  function renderStageSelect(){
+    const grid=document.getElementById("stageGrid");
+    grid.innerHTML="";
+    const adv=Storage.data.adventure;
+    STAGES.forEach((st,i)=>{
+      const n=i+1;
+      const locked = n > adv.unlocked;
+      const stars = adv.stars[n]||0;
+      const b=document.createElement("button");
+      b.className="stagebtn"+(locked?" locked":"");
+      const num=document.createElement("div");
+      num.className="stnum";
+      num.textContent = locked ? "🔒" : n;
+      const ss=document.createElement("div");
+      ss.className="ststars";
+      ss.textContent = stars ? "★".repeat(stars) : "";
+      b.appendChild(num); b.appendChild(ss);
+      if(!locked){
+        b.addEventListener("click",()=>{
+          audio(); S.click();
+          document.getElementById("stageOverlay").classList.remove("show");
+          menuEl.classList.remove("show");
+          paused=false;
+          Storage.data.savedRun=null;
+          startStage(n);
+        });
+      }
+      grid.appendChild(b);
+    });
+  }
+  function openStageSelect(){
+    renderStageSelect();
+    document.getElementById("stageOverlay").classList.add("show");
   }
 
   function startMode(m){
@@ -2411,6 +2696,15 @@ document.addEventListener('dblclick', function(event) {
     gameOver=true;
     S.gameover();
     Storage.data.stats.gamesPlayed++;
+    if(mode === "adventure"){
+      // 모험 실패: 점수 보상 없음, 재도전 유도
+      if(MODES[mode].cleanup) MODES[mode].cleanup();
+      showOverlay("스테이지 실패", "돌 "+countStones()+"개가 남았어요. 다시 도전!", "");
+      checkAchievements();
+      Storage.data.savedRun = null;
+      Storage.save();
+      return;
+    }
     // award coins based on score
     const coinReward = Math.floor(score/100);
     if(coinReward > 0) Storage.data.coins += coinReward;
@@ -2422,10 +2716,13 @@ document.addEventListener('dblclick', function(event) {
   }
 
   function showOverlay(title, sub, reward){
+    document.getElementById("nextStageBtn").style.display = "none";
     document.getElementById("goverTitle").textContent = title;
     document.getElementById("goverSub").textContent = sub;
     document.getElementById("finalScore").textContent = score;
-    document.getElementById("finalBest").textContent = "최고 점수 "+Storage.data.best;
+    document.getElementById("finalBest").textContent = (mode==="adventure" && modeState && modeState.stage)
+      ? ("스테이지 "+modeState.stage)
+      : ("최고 점수 "+Storage.data.best);
     document.getElementById("rewardBox").textContent = reward || "";
     overlayEl.classList.add("show");
   }
@@ -2436,9 +2733,13 @@ document.addEventListener('dblclick', function(event) {
   function saveRun(){
     if(gameOver || mode === "timeattack"){
       Storage.data.savedRun = null;
-    }else if(mode === "classic" || mode === "daily" || mode === "challenge"){
+    }else if(mode === "classic" || mode === "daily" || mode === "challenge" || mode === "adventure"){
       Storage.data.savedRun = {
-        mode, board, pieces, score, combo, modeState: {target: modeState.target, level: modeState.level}
+        mode, board, pieces, score, combo,
+        modeState: {
+          target: modeState.target, level: modeState.level,
+          stage: modeState.stage, used: modeState.used, totalStones: modeState.totalStones
+        }
       };
     }
     Storage.save();
@@ -2455,7 +2756,9 @@ document.addEventListener('dblclick', function(event) {
     combo = s.combo;
     gameOver = false;
     if(s.modeState) modeState = Object.assign({}, modeState, s.modeState);
-    modeNameEl.textContent = MODES[mode].name;
+    modeNameEl.textContent = (mode==="adventure" && modeState.stage)
+      ? ("모험 "+modeState.stage)
+      : MODES[mode].name;
     rng = (mode === "daily") ? makeSeededRng(dailySeed()) : Math.random;
     overlayEl.classList.remove("show");
     renderBoard();
@@ -2491,6 +2794,7 @@ document.addEventListener('dblclick', function(event) {
     { title:"줄을 채우세요", body:"가로 또는 세로 한 줄을 가득 채우면 사라지며 점수를 얻습니다. 콤보를 노려보세요!" },
     { title:"특수 능력", body:"같은 색으로 줄을 채우면 보너스! 🌈 무지개 블록은 가로/세로를 모두 지웁니다. ⭐ 황금 블록은 추가 점수." },
     { title:"부스터 활용", body:"코인으로 부스터를 사용하세요. 🔨 망치는 단일 블록 제거, 💣 폭탄은 3x3 제거, 💡 힌트는 배치 위치 표시!" },
+    { title:"모험 모드 🗺️", body:"보드에 깔린 돌을 모두 부수면 스테이지 클리어! 돌이 포함된 줄을 지우면 돌에 금이 가고, 한 번 더 지우면 깨져요. 적은 조각으로 깰수록 별이 올라가요." },
   ];
   let tutIdx = 0;
   function showTutorial(){
@@ -2663,15 +2967,17 @@ document.addEventListener('dblclick', function(event) {
     list.innerHTML = "";
     // Resume option if a saved run exists
     if(Storage.data.savedRun){
-      const m = MODES[Storage.data.savedRun.mode];
+      const sr = Storage.data.savedRun;
+      const m = MODES[sr.mode];
       if(m){
+        const stageTag = (sr.mode==="adventure" && sr.modeState && sr.modeState.stage) ? (" "+sr.modeState.stage) : "";
         const btn = document.createElement("button");
         btn.className = "menu-mode";
         btn.innerHTML = `
           <div class="mode-icon">▶️</div>
           <div>
             <div class="mode-name">이어하기</div>
-            <div class="mode-desc">${m.name} · 점수 ${Storage.data.savedRun.score}</div>
+            <div class="mode-desc">${m.name}${stageTag} · 점수 ${sr.score}</div>
           </div>
           <div class="badge">RESUME</div>
         `;
@@ -2693,6 +2999,9 @@ document.addEventListener('dblclick', function(event) {
         badge = '<div class="badge">LV '+(Storage.data.level||1)+'</div>';
       }else if(k === "daily"){
         if(canClaimDaily()) badge = '<div class="badge">NEW</div>';
+      }else if(k === "adventure"){
+        const cleared = Object.keys(Storage.data.adventure.stars).length;
+        badge = '<div class="badge">'+cleared+'/'+STAGES.length+'</div>';
       }
       btn.innerHTML = `
         <div class="mode-icon">${m.icon}</div>
@@ -2704,6 +3013,10 @@ document.addEventListener('dblclick', function(event) {
       `;
       btn.addEventListener("click", ()=>{
         audio(); S.click();
+        if(k === "adventure"){
+          openStageSelect(); // 스테이지를 고른 뒤 시작
+          return;
+        }
         menuEl.classList.remove("show");
         paused = false;
         Storage.data.savedRun = null;
@@ -2751,11 +3064,23 @@ document.addEventListener('dblclick', function(event) {
   /* ============================================================
    *  BUTTONS
    * ============================================================ */
+  function restartGame(){
+    // 모험 모드는 빈 보드가 아니라 현재 스테이지를 다시 시작해야 한다
+    if(mode==="adventure" && modeState && modeState.stage) startStage(modeState.stage);
+    else newGame();
+  }
   document.getElementById("newBtn").addEventListener("click",()=>{
-    audio(); S.click(); newGame();
+    audio(); S.click(); restartGame();
   });
   document.getElementById("restartBtn").addEventListener("click",()=>{
-    audio(); S.click(); newGame();
+    audio(); S.click(); restartGame();
+  });
+  document.getElementById("nextStageBtn").addEventListener("click",()=>{
+    audio(); S.click();
+    overlayEl.classList.remove("show");
+    if(modeState && modeState.stage && modeState.stage < STAGES.length){
+      startStage(modeState.stage + 1);
+    }
   });
   document.getElementById("toMenuBtn").addEventListener("click",()=>{
     audio(); S.click();
