@@ -1177,6 +1177,7 @@ document.addEventListener('dblclick', function(event) {
   let bgmGain = null, bgmTimers=[], bgmStarted=false;
   let lastDragEndTime = 0;
   let rng = Math.random;  // explicit RNG, swapped to seeded only for daily mode
+  let lastVW = 0, lastVH = 0, resizeQueued = false;
 
   /* ============================================================
    *  DOM
@@ -1361,6 +1362,8 @@ document.addEventListener('dblclick', function(event) {
   const CELL_HEIGHT_FACTOR = 10.64;
 
   function resize(){
+    lastVW = window.innerWidth;
+    lastVH = window.innerHeight;
     if(dragData || pending) endGesture();
 
     // 인라인 padding-top 을 비워 순수 CSS 기준값(safe-area 포함)부터 다시 측정한다.
@@ -1783,6 +1786,11 @@ document.addEventListener('dblclick', function(event) {
     clearGhost();
     dragData=null;
     pending=null;
+    // 드래그 중 연기해 둔 화면 크기 변경을 지금 반영
+    if(resizeQueued){
+      resizeQueued=false;
+      onViewportChange();
+    }
   }
 
   function endDrag(){
@@ -2938,11 +2946,28 @@ document.addEventListener('dblclick', function(event) {
       .forEach(ev=> document.addEventListener(ev, onFsChange));
   })();
 
-  window.addEventListener("resize",resize);
-  if(window.visualViewport){
-    // iOS Safari 주소창 높이 변화에 즉시 대응
-    window.visualViewport.addEventListener("resize", resize);
+  // 실제 화면 크기가 바뀐 경우에만 resize를 실행한다.
+  // iOS는 user-scalable=no 를 무시해 핀치 줌이 가능하고, 이때
+  // visualViewport resize가 연속 발생한다. 이를 그대로 resize()에
+  // 연결하면 보드가 커졌다 작아졌다 반복하고 드래그가 강제 취소된다.
+  function onViewportChange(){
+    const w = window.innerWidth, h = window.innerHeight;
+    if(w === lastVW && h === lastVH) return; // 스케일 변화·중복 이벤트 무시
+    if(dragData || pending){ resizeQueued = true; return; } // 드래그 끝난 뒤 처리
+    resize();
   }
+  window.addEventListener("resize", onViewportChange);
+  if(window.visualViewport){
+    window.visualViewport.addEventListener("resize", onViewportChange);
+  }
+
+  // iOS 핀치 줌 원천 차단 (비표준 gesture 이벤트는 iOS 전용)
+  document.addEventListener("gesturestart", e=>e.preventDefault(), {passive:false});
+  document.addEventListener("gesturechange", e=>e.preventDefault(), {passive:false});
+  document.addEventListener("touchmove", e=>{
+    if(e.touches.length > 1) e.preventDefault();
+  }, {passive:false});
+
   window.addEventListener("blur",()=>{ if(dragData||pending) endGesture(); });
 
   // iOS: 오디오는 사용자 제스처 안에서 생성/resume 해야 소리가 난다.
