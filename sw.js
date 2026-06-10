@@ -5,7 +5,7 @@
  *  - 그 외 동일 출처 자산은 cache-first
  *  - 새 버전 배포 시: CACHE 버전을 올리면 클라이언트에 업데이트 바가 뜬다
  */
-const CACHE = "wbq-v2.1.1";
+const CACHE = "wbq-v2.1.2";
 const ASSETS = [
   "./",
   "./index.html",

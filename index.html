@@ -76,6 +76,9 @@
 
   *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
   html,body{ height:100%; }
+  /* standalone(홈 화면 앱)에서 홈 인디케이터 영역에 흰 줄이 비치지 않도록
+     html에도 배경을 깐다. 테마 전환 시 JS(applyTheme)가 색을 갱신한다. */
+  html{ background:#1c1208; }
   body{
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     background:
@@ -786,7 +789,7 @@
   .blk.stone::after{ display:none; } /* 글로시 하이라이트 제거 (돌 질감) */
   .blk.stone.cracked{
     background:
-      url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Cg%20fill%3D'none'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M57%200%20L49%2013%20L58%2025%20L45%2038%20L52%2052%20L40%2065%20L48%2079%20L41%2091%20L45%20100'%20stroke%3D'rgba(0%2C0%2C0%2C0.62)'%20stroke-width%3D'4.5'%2F%3E%3Cpath%20d%3D'M49%2013%20L33%2020%20L14%2017%20M45%2038%20L63%2045%20L84%2042%20M40%2065%20L24%2073%20L6%2072%20M48%2079%20L62%2088%20L73%2097'%20stroke%3D'rgba(0%2C0%2C0%2C0.45)'%20stroke-width%3D'2.6'%2F%3E%3Cpath%20d%3D'M33%2020%20L20%2030%20M63%2045%20L74%2056%20M24%2073%20L18%2084'%20stroke%3D'rgba(0%2C0%2C0%2C0.3)'%20stroke-width%3D'1.6'%2F%3E%3Cpath%20d%3D'M59%201%20L51%2014%20L60%2026%20M47%2040%20L54%2053'%20stroke%3D'rgba(255%2C255%2C255%2C0.15)'%20stroke-width%3D'1.6'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat,
+      url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Cg%20fill%3D'none'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M56%200%20L52%207%20L57%2013%20L49%2020%20L55%2027%20L46%2034%20L53%2041%20L48%2049%20L54%2056%20L43%2063%20L50%2070%20L44%2078%20L49%2085%20L42%2092%20L46%20100'%20stroke%3D'rgba(0%2C0%2C0%2C0.6)'%20stroke-width%3D'3.2'%2F%3E%3Cpath%20d%3D'M52%207%20L40%2012%20L30%2010%20M49%2020%20L36%2026%20L24%2024%20M53%2041%20L66%2047%20L78%2044%20M54%2056%20L67%2063%20L76%2072%20M50%2070%20L36%2076%20L25%2074%20M49%2085%20L60%2091%20L68%2099'%20stroke%3D'rgba(0%2C0%2C0%2C0.45)'%20stroke-width%3D'1.9'%2F%3E%3Cpath%20d%3D'M40%2012%20L34%2019%20M36%2026%20L29%2033%20L20%2035%20M66%2047%20L72%2055%20M67%2063%20L62%2071%20M36%2076%20L31%2084%20M30%2010%20L21%206%20M78%2044%20L87%2038%20M25%2074%20L14%2079'%20stroke%3D'rgba(0%2C0%2C0%2C0.32)'%20stroke-width%3D'1.2'%2F%3E%3Cpath%20d%3D'M34%2019%20L37%2025%20M72%2055%20L80%2060%20M29%2033%20L33%2040%20M62%2071%20L67%2078%20M31%2084%20L36%2090%20M21%206%20L13%203%20M87%2038%20L94%2041'%20stroke%3D'rgba(0%2C0%2C0%2C0.22)'%20stroke-width%3D'0.8'%2F%3E%3Cpath%20d%3D'M58%201%20L54%208%20L59%2014%20M51%2022%20L57%2028%20M55%2043%20L50%2050'%20stroke%3D'rgba(255%2C255%2C255%2C0.14)'%20stroke-width%3D'1.2'%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E") center / 100% 100% no-repeat,
       radial-gradient(circle at 30% 25%, rgba(255,255,255,.14), transparent 45%),
       linear-gradient(145deg, #8a8a94, #4c4c56 55%, #36363f);
   }
@@ -923,6 +926,19 @@
       <div class="sub">돌을 모두 부수면 클리어 · 적은 조각으로 깰수록 별 ↑</div>
       <div class="stage-grid" id="stageGrid"></div>
       <button class="bigbtn secondary" data-close="stageOverlay">닫기</button>
+    </div>
+  </div>
+
+  <!-- Launch chooser (앱 실행 시 선택) -->
+  <div class="overlay" id="launchOverlay">
+    <div class="modal">
+      <h2>다시 오셨네요! 👋</h2>
+      <div class="sub" id="launchDesc">어떻게 시작할까요?</div>
+      <div style="margin-top:14px;">
+        <button class="bigbtn" id="launchResumeBtn">▶️ 하던 게임 이어서</button>
+        <button class="bigbtn" id="launchAdvBtn">🗺️ 모험 스테이지 선택</button>
+        <button class="bigbtn secondary" id="launchMenuBtn">메뉴</button>
+      </div>
     </div>
   </div>
 
@@ -2676,6 +2692,7 @@ document.addEventListener('dblclick', function(event) {
         b.addEventListener("click",()=>{
           audio(); S.click();
           document.getElementById("stageOverlay").classList.remove("show");
+          document.getElementById("launchOverlay").classList.remove("show");
           menuEl.classList.remove("show");
           paused=false;
           Storage.data.savedRun=null;
@@ -3071,6 +3088,8 @@ document.addEventListener('dblclick', function(event) {
     // 시스템 상태바/브라우저 UI 색상도 테마에 맞춘다.
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if(metaTheme) metaTheme.setAttribute("content", THEME_COLORS[theme] || "#1c1208");
+    // standalone 하단 세이프에어리어 영역 배경 (흰 줄 방지)
+    document.documentElement.style.backgroundColor = THEME_COLORS[theme] || "#1c1208";
     document.querySelectorAll(".theme-chip").forEach(c=>{
       c.classList.toggle("selected", c.dataset.theme === theme);
     });
@@ -3298,13 +3317,23 @@ document.addEventListener('dblclick', function(event) {
 
   // 실제 화면 크기가 바뀐 경우에만 resize를 실행한다.
   // iOS는 user-scalable=no 를 무시해 핀치 줌이 가능하고, 이때
-  // visualViewport resize가 연속 발생한다. 이를 그대로 resize()에
-  // 연결하면 보드가 커졌다 작아졌다 반복하고 드래그가 강제 취소된다.
+  // visualViewport resize가 연속 발생한다. 또한 아이폰 standalone
+  // 모드에서는 터치 중 뷰포트 높이가 수십 px 미만으로 떨리는 현상이
+  // 있어, 이를 그대로 반영하면 블록을 놓을 때마다 보드가 커졌다
+  // 작아지는 "팝업" 현상이 생긴다. 따라서:
+  //  - 가로폭 변화(회전·분할화면) 또는 40px 이상의 높이 변화만 반영
+  //  - 200ms 디바운스로 연속 이벤트를 묶어 한 번만 처리
+  let resizeTimer = null;
   function onViewportChange(){
     const w = window.innerWidth, h = window.innerHeight;
-    if(w === lastVW && h === lastVH) return; // 스케일 변화·중복 이벤트 무시
-    if(dragData || pending){ resizeQueued = true; return; } // 드래그 끝난 뒤 처리
-    resize();
+    const dw = Math.abs(w - lastVW), dh = Math.abs(h - lastVH);
+    if(dw === 0 && dh === 0) return;
+    if(dw === 0 && dh < 40){ lastVH = h; return; } // 미세 떨림: 기록만 갱신
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(()=>{
+      if(dragData || pending){ resizeQueued = true; return; }
+      resize();
+    }, 200);
   }
   window.addEventListener("resize", onViewportChange);
   if(window.visualViewport){
@@ -3402,19 +3431,42 @@ document.addEventListener('dblclick', function(event) {
     updateHud();
   }
 
-  if(loadRun()){
-    if(mode === "timeattack"){
-      // timer not safely resumable; restart the mode
-      Storage.data.savedRun = null;
-      bootInitialBoard();
-      openMenu();
-    }
-    // else: saved run is now active
-  }else{
+  // 실행 시 선택 화면: 저장된 게임이 있으면 "이어하기 / 모험 / 메뉴"를 묻는다.
+  function showLaunchChooser(sr){
+    paused = true;
+    const m = MODES[sr.mode];
+    const stageTag = (sr.mode==="adventure" && sr.modeState && sr.modeState.stage) ? (" "+sr.modeState.stage) : "";
+    document.getElementById("launchDesc").textContent =
+      "진행 중: "+m.name+stageTag+" · 점수 "+sr.score;
+    document.getElementById("launchOverlay").classList.add("show");
+  }
+  document.getElementById("launchResumeBtn").addEventListener("click",()=>{
+    audio(); S.click();
+    document.getElementById("launchOverlay").classList.remove("show");
+    paused = false;
+    loadRun();
+  });
+  document.getElementById("launchAdvBtn").addEventListener("click",()=>{
+    audio(); S.click();
+    openStageSelect(); // 스테이지를 고르면 아래 핸들러가 launchOverlay도 닫는다
+  });
+  document.getElementById("launchMenuBtn").addEventListener("click",()=>{
+    audio(); S.click();
+    document.getElementById("launchOverlay").classList.remove("show");
+    openMenu();
+  });
+
+  if(!Storage.data.tutorialDone){
     bootInitialBoard();
-    if(!Storage.data.tutorialDone){
-      showTutorial();
+    showTutorial();
+  }else{
+    const sr = Storage.data.savedRun;
+    bootInitialBoard();
+    if(sr && MODES[sr.mode] && sr.mode !== "timeattack"){
+      // 진행 중인 게임이 있으면 매 실행마다 선택하게 한다
+      showLaunchChooser(sr);
     }else{
+      Storage.data.savedRun = null;
       // 모험 모드가 기본: 도전 중인 스테이지로 바로 시작.
       // 전부 클리어했으면 기존처럼 메뉴를 연다.
       const next = nextAdventureStage();
